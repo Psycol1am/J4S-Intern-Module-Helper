@@ -193,3 +193,11 @@ cython_debug/
 #  refer to https://docs.cursor.com/context/ignore-files
 .cursorignore
 .cursorindexingignore
+J4S-Intern-Module-Helper/data/allstudents.csv
+.gitignore
+J4S-Intern-Module-Helper/data/graded-sheet-partially.csv
+J4S-Intern-Module-Helper/data/generic-feedbacks.xlsx
+J4S-Intern-Module-Helper/data/Moodle Helper.pptx
+J4S-Intern-Module-Helper/data/Student Internship 2025 – Develop a Moodle Feedback Helper for Tutors.docx
+J4S-Intern-Module-Helper/data/submitted-sheet0.csv
+J4S-Intern-Module-Helper/data/submitted-sheet1.csv
