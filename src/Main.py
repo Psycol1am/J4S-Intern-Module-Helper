@@ -3,6 +3,7 @@ import pandas as pd
 import tkinter as tk
 from tkinter import *
 from tkinter.filedialog import askopenfile
+from tkinter import simpledialog
 
 win = tk.Tk()
 win.title("Moodle Feedback Helper Tool")
@@ -87,10 +88,12 @@ def  open_file(type):
             entry = tk.Entry(frame2)
             entry.pack(pady=10, padx=10, fill='x')
             button.config(text="submit", command=lambda: submit(entry.get(), df))
+            button.pack(pady=10, padx=10, fill='x')
             df = pd.read_csv(file_path)
             df_view(df)
         elif file_path.endswith('.xlsx'):
             df = pd.read_excel(file_path)
+            
             df_view(df)
         else:
             print("Unsupported file format")
@@ -108,18 +111,26 @@ def submit(splitAmount, df):
         splitAmount = int(splitAmount)
         if splitAmount <= 0:
             raise ValueError("Number of students per marker must be a positive integer.")
+        elif splitAmount%len(df) != 0:
+            raise ValueError("There isnt a even split of students per marker, please a number that is divisible by the number of students in the grading sheet. Such as in a grading sheet of 100 students, you could use 10, 20, 25, 50 or 100 as the number of students per marker.")
     except ValueError as e:
         label.config(text=f"Invalid input: {e}")
         return
     
     chunks = [df[i:i + splitAmount] for i in range(0, len(df), splitAmount)]
     
-    # Save each chunk to a new file
-    for i, chunk in enumerate(chunks):
-        chunk.to_csv(f'split_grading_sheet_{i+1}.csv', index=False)
+    if len(chunks) == 0:
+        label.config(text="No data to split. Please check your grading sheet has rows and isnt empty.")
+        return
+    elif len(chunks) == 1:
+        label.config(text="Grading sheet does not need to be split, the number to split by would result in one file only.")
+        return
     
-    label.config(text=f"Grading sheet split into {len(chunks)} files successfully!")
-    button.config(text="Done", command=default)
+    else:
+        for i, chunk in enumerate(chunks):
+            chunk.to_csv(f'split_grading_sheet_{i+1}.csv', index=False)
+        label.config(text=f"Grading sheet split into {len(chunks)} files successfully!")
+        button.config(text="Done", command=default)
     
     
 
