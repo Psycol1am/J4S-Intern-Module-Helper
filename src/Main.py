@@ -11,7 +11,7 @@ win.minsize(1000,650)
 win.resizable(True, True)
 
 def default():
-    global frame1,frame2,label
+    global frame1,frame2,label,button
     frame1 = tk.Frame(win)
     frame2 = tk.Frame(win)
     
@@ -45,7 +45,7 @@ def default():
         "To get started, please press one of the buttons to the right.\n"
     )
     
-    label = tk.Label(frame1, text=Intro, font=("Arial", 20), justify='left',anchor="nw",wraplength=900)
+    label = tk.Label(frame1, text=Intro, font=("Arial", 20), justify="left",anchor="nw",wraplength=900)
     label.pack(expand=True, fill='both', padx=40, pady=40)
     
     def update_wraplength(event):
@@ -55,18 +55,38 @@ def default():
         label.config(wraplength=wrap)
 
     frame1.bind("<Configure>", update_wraplength)
+    button = tk.Button(frame2, text="Split Grading Sheet", command=split_grading_sheet)
+    button.pack(pady=10, padx=10, fill='x')
 
 
+
+
+
+
+
+def split_grading_sheet():
+    global df, label
+    label.config(text="Please select a grading sheet to split using the choose file button to the right.(The program only accepts both .csv and .xlsx (Excel files)) \n"
+                "\n"
+                "After selecting the file, use the text box to the right to enter the amount of students per marker."
+                )
+    button.config(text="Choose File", command=lambda: open_file('split'))
+    
 
     
     
 
 
-def  open_file():
-    global df
+def  open_file(type):
+    global df,button
     file_path = filedialog.askopenfilename(filetypes=[("Supported", "*.csv;*.xlsx")])
     if file_path:
-        if file_path.endswith('.csv'):
+        if file_path.endswith('.csv') and type == 'split':
+            df = pd.read_csv(file_path)
+            label.config(text="Please enter the number of students per marker in the text box below.")
+            entry = tk.Entry(frame2)
+            entry.pack(pady=10, padx=10, fill='x')
+            button.config(text="submit", command=lambda: submit(entry.get(), df))
             df = pd.read_csv(file_path)
             df_view(df)
         elif file_path.endswith('.xlsx'):
@@ -79,9 +99,27 @@ def  open_file():
 def df_view(df):
     new = tk.Toplevel(win)
     new.title("DataFrame View")
-    text = tk.Text(win)
+    text = tk.Text(new)
     text.insert(END, df.to_string())
     text.pack(expand=True, fill='both')
+    
+def submit(splitAmount, df):
+    try:
+        splitAmount = int(splitAmount)
+        if splitAmount <= 0:
+            raise ValueError("Number of students per marker must be a positive integer.")
+    except ValueError as e:
+        label.config(text=f"Invalid input: {e}")
+        return
+    
+    chunks = [df[i:i + splitAmount] for i in range(0, len(df), splitAmount)]
+    
+    # Save each chunk to a new file
+    for i, chunk in enumerate(chunks):
+        chunk.to_csv(f'split_grading_sheet_{i+1}.csv', index=False)
+    
+    label.config(text=f"Grading sheet split into {len(chunks)} files successfully!")
+    button.config(text="Done", command=default)
     
     
 
