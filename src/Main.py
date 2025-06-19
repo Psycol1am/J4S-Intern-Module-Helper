@@ -11,6 +11,21 @@ win.geometry("1920x1080")
 win.minsize(1000,650)
 win.resizable(True, True)
 
+global feedbacks
+feedbacks = {}
+filepath = "data\\generic-feedbacks.xlsx"
+try:
+    feedback = pd.read_excel(filepath, sheet_name=None)
+    for sheet_name, sheet_df in feedback.items():
+        for _, row in sheet_df.iterrows():
+            ranges = str(row['Marks']).split('-')
+            for i in range(int(ranges[0]), int(ranges[1])+1):
+                feedbacks[i] = row['Feedback']
+except Exception as e:
+    print(f"Error loading feedbacks: {e}")
+        
+
+
 def default():
     global frame1,frame2,label,button
     frame1 = tk.Frame(win)
@@ -57,13 +72,65 @@ def default():
 
     frame1.bind("<Configure>", update_wraplength)
     button = tk.Button(frame2, text="Split Grading Sheet", command=split_grading_sheet)
+    button2 = tk.Button(frame2, text="Merge Grading Sheets", command=merge_grading_sheets)
+    button3 = tk.Button(frame2, text="Generate Generic Feedback", command=generate_feedback)
     button.pack(pady=10, padx=10, fill='x')
+    button2.pack(pady=10, padx=10, fill='x')
+    
 
 
+def generate_feedback_page():
+    label.config(text="Please select a grading sheet to generate feedback for using the choose file button to the right.(The program only accepts both .csv and .xlsx (Excel files)) \n"
+                "\n")
+    button.config(text="Choose File", command=generate_feedback)
+    
+    
+def generate_feedback():
+    global df, label, button
+    file_path = filedialog.askopenfilename(filetypes=[("Supported", "*.csv;*.xlsx")])
+    if not file_path:
+        label.config(text="No file selected. Please select a grading sheet.")
+        return
+    
+    try:
+        if file_path.endswith('.csv'):
+            df = pd.read_csv(file_path)
+        elif file_path.endswith('.xlsx'):
+            df = pd.read_excel(file_path)
+        else:
+            label.config(text="Unsupported file format. Please select a .csv or .xlsx file.")
+            return
+    except Exception as e:
+        label.config(text=f"Error reading file: {e}")
+        return
 
+    label.config(text="Grading sheet loaded successfully. You can now generate feedback.")
+    
+    
+def merge_grading_sheets():
+    file_paths = filedialog.askopenfilenames(filetypes=[("Supported", "*.csv;*.xlsx")])
+    columns = ["Student Name", "Email", "Submission time", "Marks"]
+    dfs = []
+    for file_path in file_paths:
+        try:
+            if file_path.endswith('.csv'):
+                dfs.append(pd.read_csv(file_path, usecols=columns))
+            elif file_path.endswith('.xlsx'):
+                sheets = pd.read_excel(file_path, sheet_name=None, usecols=columns)
+                for sheet in sheets.values():
+                    dfs.append(sheet)
+        except ValueError as e:
+            label.config(text=f"Error reading files: {e}")
+            return
 
+    if not dfs:
+        label.config(text="No valid files selected. Please select .csv or .xlsx files.")
+        return
 
-
+    combined_df = pd.concat(dfs, ignore_index=True)
+    combined_df.to_csv('merged_grading_sheet.csv', index=False)
+    label.config(text="Grading sheets merged successfully into 'merged_grading_sheet.csv'.")
+        
 
 def split_grading_sheet():
     global df, label
@@ -91,10 +158,20 @@ def  open_file(type):
             button.pack(pady=10, padx=10, fill='x')
             df = pd.read_csv(file_path)
             df_view(df)
-        elif file_path.endswith('.xlsx'):
+        elif file_path.endswith('.xlsx') and type == 'split':
             df = pd.read_excel(file_path)
             
             df_view(df)
+        elif file_path.endswith('.csv') and type == 'feedback':
+            df = pd.read_csv(file_path)
+            label.config(text="Grading sheet loaded successfully. You can now generate feedback.")
+            df_view(df)
+            button.config(text="Generate Feedback", command=lambda: generate_feedback())
+        elif file_path.endswith('.xlsx') and type == 'feedback':
+            df = pd.read_excel(file_path)
+            label.config(text="Grading sheet loaded successfully. You can now generate feedback.")
+            df_view(df)
+            button.config(text="Generate Feedback", command=lambda: generate_feedback())    
         else:
             print("Unsupported file format")
             return
