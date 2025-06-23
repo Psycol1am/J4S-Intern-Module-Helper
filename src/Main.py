@@ -1,219 +1,260 @@
+import tkinter as tk
 from tkinter import filedialog
 import pandas as pd
-import tkinter as tk
-from tkinter import *
-from tkinter.filedialog import askopenfile
-from tkinter import simpledialog
+from PIL import Image, ImageTk
+from tkinter import messagebox
 
-win = tk.Tk()
-win.title("Moodle Feedback Helper Tool")
-win.geometry("1920x1080")
-win.minsize(1000,650)
-win.resizable(True, True)
+class J4SInternModuleHelper:
+    def __init__(self, root):
+        self.root = root
+        self.root.geometry("1920x1080")
+        self.root.minsize(1920, 1080)
+        self.root.state('zoomed')
+        self.root.resizable(True, True)
 
-global feedbacks
-feedbacks = {}
-filepath = "data\\generic-feedbacks.xlsx"
-try:
-    feedback = pd.read_excel(filepath, sheet_name=None)
-    for sheet_name, sheet_df in feedback.items():
-        for _, row in sheet_df.iterrows():
-            ranges = str(row['Marks']).split('-')
-            for i in range(int(ranges[0]), int(ranges[1])+1):
-                feedbacks[i] = row['Feedback']
-except Exception as e:
-    print(f"Error loading feedbacks: {e}")
+        self.all_Students = None
+        self.grading_Sheet = None
+        self.submitted = None
         
-
-
-def default():
-    global frame1,frame2,label,button
-    frame1 = tk.Frame(win)
-    frame2 = tk.Frame(win)
-    
-    frame1.grid(row=0, column=0, sticky='nsew')
-    frame2.grid(row=0, column=1, sticky='nsew')
-    
-    win.grid_columnconfigure(0, weight=1, uniform="group1")
-    win.grid_columnconfigure(1, weight=1, uniform="group1")
-    win.grid_rowconfigure(0, weight=1)
-    
-    
-    Intro = (
-        "Welcome to the Moodle Feedback helper tool\n"
-        "\n"
-        "This tool is designed to help with:\n"
-        "\n"
-        "1.Grading sheets:\n"
-        "   -Split student grading sheets into multiple markers \n"
-        "   -Merge multiple markers grading sheets into one\n"
-        "\n"
-        "2.Generic Feedback\n"
-        "  -Generate generic feedback for students based on their grades\n"
-        "  - Allow user to select feedback from a predefined list\n"
-        "  - Allow user to write individual feedback for students\n"
-        "\n"
         
-        "3. Generate new graded sheet that complies with Moodle's requirements\n"
-        "\n"
-        "\n"
-        
-        "To get started, please press one of the buttons to the right.\n"
-    )
-    
-    label = tk.Label(frame1, text=Intro, font=("Arial", 20), justify="left",anchor="nw",wraplength=900)
-    label.pack(expand=True, fill='both', padx=40, pady=40)
-    
-    def update_wraplength(event):
-        wrap = max(450, min(int(event.width * 0.8), 1000))
-        text =  max(12, min(20, int(event.width /50 )))
-        label.config(font=("Arial", text))
-        label.config(wraplength=wrap)
+        self.feedbacks = {}
 
-    frame1.bind("<Configure>", update_wraplength)
-    button = tk.Button(frame2, text="Split Grading Sheet", command=split_grading_sheet)
-    button2 = tk.Button(frame2, text="Merge Grading Sheets", command=merge_grading_sheets)
-    button3 = tk.Button(frame2, text="Generate Generic Feedback", command=generate_feedback)
-    button.pack(pady=10, padx=10, fill='x')
-    button2.pack(pady=10, padx=10, fill='x')
-    
+        self.frame1 = tk.Frame(self.root)
+        self.frame2 = tk.Frame(self.root)
+        self.frame1.grid(row=0, column=0, sticky='nsew')
+        self.frame2.grid(row=0, column=1, sticky='nsew')
+        self.root.grid_columnconfigure(0, weight=1, uniform="group1")
+        self.root.grid_columnconfigure(1, weight=1, uniform="group1")
+        self.root.grid_rowconfigure(0, weight=1)
 
+        self.setup_buttons()
+        self.show_home()
+        self.load_Feedback()
+        self.frame1.bind("<Configure>", self.resize)
 
-def generate_feedback_page():
-    label.config(text="Please select a grading sheet to generate feedback for using the choose file button to the right.(The program only accepts both .csv and .xlsx (Excel files)) \n"
-                "\n")
-    button.config(text="Choose File", command=generate_feedback)
-    
-    
-def generate_feedback():
-    global df, label, button
-    file_path = filedialog.askopenfilename(filetypes=[("Supported", "*.csv;*.xlsx")])
-    if not file_path:
-        label.config(text="No file selected. Please select a grading sheet.")
-        return
-    
-    try:
-        if file_path.endswith('.csv'):
-            df = pd.read_csv(file_path)
-        elif file_path.endswith('.xlsx'):
-            df = pd.read_excel(file_path)
-        else:
-            label.config(text="Unsupported file format. Please select a .csv or .xlsx file.")
-            return
-    except Exception as e:
-        label.config(text=f"Error reading file: {e}")
-        return
-
-    label.config(text="Grading sheet loaded successfully. You can now generate feedback.")
-    
-    
-def merge_grading_sheets():
-    file_paths = filedialog.askopenfilenames(filetypes=[("Supported", "*.csv;*.xlsx")])
-    columns = ["Student Name", "Email", "Submission time", "Marks"]
-    dfs = []
-    for file_path in file_paths:
+    def load_Feedback(self):
+        filepath = "data\\generic-feedbacks.xlsx"
         try:
-            if file_path.endswith('.csv'):
-                dfs.append(pd.read_csv(file_path, usecols=columns))
-            elif file_path.endswith('.xlsx'):
-                sheets = pd.read_excel(file_path, sheet_name=None, usecols=columns)
-                for sheet in sheets.values():
-                    dfs.append(sheet)
-        except ValueError as e:
-            label.config(text=f"Error reading files: {e}")
-            return
-
-    if not dfs:
-        label.config(text="No valid files selected. Please select .csv or .xlsx files.")
-        return
-
-    combined_df = pd.concat(dfs, ignore_index=True)
-    combined_df.to_csv('merged_grading_sheet.csv', index=False)
-    label.config(text="Grading sheets merged successfully into 'merged_grading_sheet.csv'.")
-        
-
-def split_grading_sheet():
-    global df, label
-    label.config(text="Please select a grading sheet to split using the choose file button to the right.(The program only accepts both .csv and .xlsx (Excel files)) \n"
-                "\n"
-                "After selecting the file, use the text box to the right to enter the amount of students per marker."
-                )
-    button.config(text="Choose File", command=lambda: open_file('split'))
-    
-
-    
-    
-
-
-def  open_file(type):
-    global df,button
-    file_path = filedialog.askopenfilename(filetypes=[("Supported", "*.csv;*.xlsx")])
-    if file_path:
-        if file_path.endswith('.csv') and type == 'split':
-            df = pd.read_csv(file_path)
-            label.config(text="Please enter the number of students per marker in the text box below.")
-            entry = tk.Entry(frame2)
-            entry.pack(pady=10, padx=10, fill='x')
-            button.config(text="submit", command=lambda: submit(entry.get(), df))
-            button.pack(pady=10, padx=10, fill='x')
-            df = pd.read_csv(file_path)
-            df_view(df)
-        elif file_path.endswith('.xlsx') and type == 'split':
-            df = pd.read_excel(file_path)
+            feedback = pd.read_excel(filepath, sheet_name=None)
+            for _, sheet_df in feedback.items():
+                for _, row in sheet_df.iterrows():
+                    ranges = str(row['Marks']).split('-')
+                    for i in range(int(ranges[0]), int(ranges[1])+1):
+                        self.feedbacks[i] = row['Feedback']    
+        except Exception as e:
+            print(f"Error loading feedbacks: {e}")
             
-            df_view(df)
-        elif file_path.endswith('.csv') and type == 'feedback':
-            df = pd.read_csv(file_path)
-            label.config(text="Grading sheet loaded successfully. You can now generate feedback.")
-            df_view(df)
-            button.config(text="Generate Feedback", command=lambda: generate_feedback())
-        elif file_path.endswith('.xlsx') and type == 'feedback':
-            df = pd.read_excel(file_path)
-            label.config(text="Grading sheet loaded successfully. You can now generate feedback.")
-            df_view(df)
-            button.config(text="Generate Feedback", command=lambda: generate_feedback())    
-        else:
-            print("Unsupported file format")
+        if self.feedbacks == {}:
+            print("No feedbacks loaded. Please check the file path and format.")
+    
+    def setup_buttons(self):
+        for widget in self.frame2.winfo_children():
+            widget.destroy()
+        tk.Button(self.frame2, text="Split Grading Sheet", width=20, height=2, command=self.split_grading_sheet_page).pack(pady=20)
+        tk.Button(self.frame2, text="Merge Grading Sheets", width=20, height=2, command=self.merge_grading_sheets_page).pack(pady=20)
+        tk.Button(self.frame2, text="Generate Feedback", width=20, height=2, command=self.generate_feedback_page).pack(pady=20)
+
+    def show_home(self):
+        self.clear_frame1()
+        intro = tk.Label(self.frame1, text=self.get_intro_text(), anchor="nw", justify="left", wraplength=900)
+        intro.pack(pady=30, padx=30, expand=True, fill='both')
+
+    def split_grading_sheet_page(self):
+        self.clear_frame1()
+        tk.Label(self.frame1, text="Split Grading Sheet", font=("Arial", 16, "bold")).pack(pady=10)
+        tk.Label(self.frame1, text="Please upload the file of all students that can be downloaded from moodle (Image Below). This will be used to create numerous grading sheets split by a number of students the user specifies.").pack()
+        tk.Button(self.frame1, text="Select File", command=self.select_split_file).pack(pady=10)
+        
+        tk.Label(self.frame1, text="Example of all students sheet:").pack(pady=10)
+        img = Image.open("data/Example All students.png")
+        img = img.resize((900, 700))
+        tk_img = ImageTk.PhotoImage(img)
+        img_label = tk.Label(self.frame1, image=tk_img)
+        img_label.image = tk_img
+        img_label.pack(pady=10)
+
+    def select_split_file(self):
+        file_path = filedialog.askopenfilename(filetypes=[("CSV or Excel", "*.csv;*.xlsx")])
+        if not file_path:
             return
+        if file_path.endswith('.csv'):
+            self.df = pd.read_csv(file_path)
+        elif file_path.endswith('.xlsx'):
+            self.df = pd.read_excel(file_path)
+        else:
+            self.show_message("Unsupported file format.")
+            return
+        self.show_split_entry()
+
+    def show_split_entry(self):
+        for widget in self.frame1.winfo_children():
+            widget.destroy()
+        tk.Label(self.frame1, text="Step 2: Enter number of students per marker").pack(pady=10)
+        entry = tk.Entry(self.frame1)
+        entry.pack()
+        tk.Button(self.frame1, text="Submit", command=lambda: self.perform_split(entry.get())).pack(pady=10)
+        tk.Button(self.frame1, text="Back to Home", command=self.show_home).pack(pady=10)
+
+    def perform_split(self, value):
+        try:
+            students_per_marker = int(value)
+            if self.df is None:
+                self.show_message("No grading sheet loaded.")
+                return
+            chunks = [self.df[i:i + students_per_marker] for i in range(0, len(self.df), students_per_marker)]
+            self.clear_frame1()
+            tk.Label(self.frame1, text="Split Results", font=("Arial", 16, "bold")).pack(pady=10)
+            for idx, chunk in enumerate(chunks):
+                chunk_label = tk.Label(self.frame1, text=f"Grading Sheet {idx+1}")
+                chunk_label.pack()
+                text = tk.Text(self.frame1, wrap="none", height=8)
+                text.insert(tk.END, chunk.to_string())
+                text.pack(expand=True, fill='both')
+            tk.Button(self.frame1, text="Back to Home", command=self.show_home).pack(pady=10)
+        except Exception as e:
+            self.show_message(f"Error splitting: {e}")
+
+    def merge_grading_sheets_page(self):
+        self.clear_frame1()
+        tk.Label(self.frame1, text="Merge Grading Sheets", font=("Arial", 16, "bold")).pack(pady=10)
+        tk.Label(self.frame1, text="Step 1: Select grading sheet files (.csv or .xlsx)").pack()
+        tk.Button(self.frame1, text="Select Files", command=self.merge_popup).pack(pady=10)
+
+    def merge_files(self,file_paths):
+        dfs = []
+        columns =  "['Sub ID, Submission id','Surname/Name','Username',Submission time',Grade','Feedback comment']"
+        for file_path in file_paths:
+            try:
+                if file_path.endswith('.csv'):
+                    dfs.append(pd.read_csv(file_path, usecols=columns))
+                elif file_path.endswith('.xlsx'):
+                    sheets = pd.read_excel(file_path, sheet_name=None, usecols=columns)
+                    for sheet in sheets.values():
+                        dfs.append(sheet)
+            except Exception as e:
+                self.show_message(f"Skipped {file_path}: {e}")
+        if dfs:
+            combined_df = pd.concat(dfs, ignore_index=True)
+            combined_df.to_csv('merged_grading_sheet.csv', index=False)
+            self.clear_frame1()
+            tk.Label(self.frame1, text="Merged Grading Sheet", font=("Arial", 16, "bold")).pack(pady=10)
+            text = tk.Text(self.frame1, wrap="none", height=15)
+            text.insert(tk.END, combined_df.to_string())
+            text.pack(expand=True, fill='both')
+            tk.Label(self.frame1, text="Merged grading sheet saved as 'merged_grading_sheet.csv'.").pack(pady=10)
+            tk.Button(self.frame1, text="Back to Home", command=self.show_home).pack(pady=10)
+        else:
+            self.show_message("No valid files selected.")
+
+
+    def merge_popup(self):
+        popup = tk.Toplevel(self.root)
+        popup.title("Select Files to Merge")
+        popup.geometry("500x400")
+        file_list = []
         
-def df_view(df):
-    new = tk.Toplevel(win)
-    new.title("DataFrame View")
-    text = tk.Text(new)
-    text.insert(END, df.to_string())
-    text.pack(expand=True, fill='both')
-    
-def submit(splitAmount, df):
-    try:
-        splitAmount = int(splitAmount)
-        if splitAmount <= 0:
-            raise ValueError("Number of students per marker must be a positive integer.")
-        elif splitAmount%len(df) != 0:
-            raise ValueError("There isnt a even split of students per marker, please a number that is divisible by the number of students in the grading sheet. Such as in a grading sheet of 100 students, you could use 10, 20, 25, 50 or 100 as the number of students per marker.")
-    except ValueError as e:
-        label.config(text=f"Invalid input: {e}")
-        return
-    
-    chunks = [df[i:i + splitAmount] for i in range(0, len(df), splitAmount)]
-    
-    if len(chunks) == 0:
-        label.config(text="No data to split. Please check your grading sheet has rows and isnt empty.")
-        return
-    elif len(chunks) == 1:
-        label.config(text="Grading sheet does not need to be split, the number to split by would result in one file only.")
-        return
-    
-    else:
-        for i, chunk in enumerate(chunks):
-            chunk.to_csv(f'split_grading_sheet_{i+1}.csv', index=False)
-        label.config(text=f"Grading sheet split into {len(chunks)} files successfully!")
-        button.config(text="Done", command=default)
-    
-    
-
-
- 
+        listbox = tk.Listbox(popup, width=60)
+        listbox.pack(pady=10)
         
+        def add_file():
+            file_path = filedialog.askopenfilename(filetypes=[("CSV or Excel", "*.csv;*.xlsx")],parent=popup)
+            if file_path and file_path not in file_list:
+                file_list.append(file_path)
+                listbox.insert(tk.END, file_path)
+                
+        def start_merge():
+            if not file_list:
+                tk.messagebox.showwarning("Warning", "No files selected.")
+                return
+            popup.destroy()
+            self.merge_files(file_list)
+            
+        tk.Button(popup, text="Add File", command=add_file).pack(pady=5)
+        tk.Button(popup, text="Merge Files", command=start_merge).pack(pady=5)
+        tk.Button(popup, text="Cancel", command=popup.destroy).pack(pady=5)
+    
+    
+    def generate_feedback_page(self):
+        self.clear_frame1()
+        tk.Label(self.frame1, text="Generate Feedback", font=("Arial", 16, "bold")).pack(pady=10)
+        tk.Label(self.frame1, text="Please select a grading sheet to add feedback to:" 
+                 "\n"
+                 "This program supports both generating automated generic feedback based on the students score and also allows the user to write individual feedback for each student.""").pack(pady=20)
+        tk.Button(self.frame1, text="B", command=self.select_feedback_file).pack(pady=10)
+        
+    def select_feedback_file(self):
+        file_path = filedialog.askopenfilename(filetypes=[("CSV or Excel", "*.csv;*.xlsx")])
+        if not file_path:
+            return
+        if file_path.endswith('.csv'):
+            self.grading_Sheet = pd.read_csv(file_path)
+        elif file_path.endswith('.xlsx'):
+            self.grading_Sheet = pd.read_excel(file_path)
+        else:
+            self.show_message("Unsupported file format.")
+            return
+        self.show_feedback_entry()
+        
+    def feedback_page_part2(self):
+        self.clear_frame1()
+        tk.Label(self.frame1, text="Step 2: Select feedback type").pack(pady=10)
+        tk.Button(self.frame1, text="Generate Generic Feedback", command=self.generate_generic_feedback).pack(pady=10)
+        tk.Button(self.frame1, text="Write Individual Feedback", command=self.write_individual_feedback).pack(pady=10)
+    
+    def generate_generic_feedback(self):
+        if self.grading_Sheet is None:
+            self.show_message("No grading sheet loaded.")
+            return
+        self.clear_frame1()
+        tk.Label(self.frame1, text="Generic Feedback", font=("Arial", 16, "bold")).pack(pady=10)
+        feedbacks = []
+        for index, row in self.grading_Sheet.iterrows():
+            continue
+    
+        
+    
 
-default()
-win.mainloop()
+    def show_message(self, message):
+        self.clear_frame1()
+        tk.Label(self.frame1, text=message).pack(pady=10)
+        tk.Button(self.frame1, text="Back to Home", command=self.show_home).pack(pady=10)
+
+    def clear_frame1(self):
+        for widget in self.frame1.winfo_children():
+            widget.destroy()
+
+    def get_intro_text(self):
+        return (
+            "Welcome to the Moodle Feedback helper tool\n"
+            "\n"
+            "This tool is designed to help with:\n"
+            "\n"
+            "1. Grading sheets:\n"
+            "   - Split student grading sheets into multiple markers\n"
+            "   - Merge multiple markers grading sheets into one\n"
+            "\n"
+            "2. Generic Feedback\n"
+            "   - Generate generic feedback for students based on their grades\n"
+            "   - Allow user to select feedback from a predefined list\n"
+            "   - Allow user to write individual feedback for students\n"
+            "\n"
+            "3. Generate new graded sheet that complies with Moodle's requirements\n"
+            "\n"
+            "To get started, please press one of the buttons to the right.\n"
+        )
+        
+    def resize(self, event):
+       self.resize_widgets(event.width,event.height)
+       
+    def resize_widgets(self, width,height):
+        if(hasattr(self, 'frame1')):
+            for widget in self.frame1.winfo_children():
+                wrap = max(450, min(int(width * 0.8), 1000))
+                text =  max(12, min(20, int(width /50 )))
+                widget.config(font=("Arial", text))
+                widget.config(wraplength=wrap)
+                
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = J4SInternModuleHelper(root)
+    root.mainloop()
