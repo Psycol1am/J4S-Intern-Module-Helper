@@ -84,18 +84,18 @@ class J4SInternModuleHelper:
         else:
             self.show_message("Unsupported file format.")
             return
-        self.show_split_entry()
+        self.show_split_entry_page()
 
-    def show_split_entry(self):
+    def show_split_entry_page(self):
         for widget in self.frame1.winfo_children():
             widget.destroy()
         tk.Label(self.frame1, text="Step 2: Enter number of students per marker").pack(pady=10)
         entry = tk.Entry(self.frame1)
         entry.pack()
-        tk.Button(self.frame1, text="Submit", command=lambda: self.perform_split(entry.get())).pack(pady=10)
+        tk.Button(self.frame1, text="Submit", command=lambda: self.perform_all_students_split(entry.get())).pack(pady=10)
         tk.Button(self.frame1, text="Back to Home", command=self.show_home).pack(pady=10)
 
-    def perform_split(self, value):
+    def perform_normal_split(self, value):
         try:
             students_per_marker = int(value)
             if self.df is None:
@@ -114,6 +114,47 @@ class J4SInternModuleHelper:
             tk.Button(self.frame1, text="Back to Home", command=self.show_home).pack(pady=10)
         except Exception as e:
             self.show_message(f"Error splitting: {e}")
+    
+    def perform_all_students_split(self, value):
+        try:
+            students_per_marker = int(value)
+            if self.df is None:
+                self.show_message("No grading sheet loaded.")
+                return
+            if 'First name' not in self.df.columns or 'Last name' not in self.df.columns or 'Username' not in self.df.columns:
+                self.show_message("The grading sheet must contain 'Username','First name' and 'Last name' columns.")
+                return
+            self.df['Surname/Name'] = self.df['Last name'] + ' ' + self.df['First name'].astype(str).str.strip()
+            chunks = [self.df[i:i + students_per_marker] for i in range(0, len(self.df), students_per_marker)]
+    
+            self.clear_frame1()
+            tk.Label(self.frame1, text="Split Results", font=("Arial", 16, "bold")).pack(pady=10)
+            desired_columns = ['Sub ID', 'Submission id', 'Surname/Name', 'Username', 'Submission time', 'Grade', 'Feedback comment']
+            for idx, chunk in enumerate(chunks):
+                chunk = chunk.reindex(columns=desired_columns, fill_value="-")
+                chunk_label = tk.Label(self.frame1, text=f"Grading Sheet {idx+1}")
+                chunk_label.pack()
+                text = tk.Text(self.frame1, wrap="none", height=8)
+                text.insert(tk.END, chunk.to_string())
+                text.pack(expand=True, fill='both')
+                
+            tk.Button(self.frame1, text="Back to Home", command=self.show_home).pack(pady=10)
+            tk.Button(self.frame1, text="Save Split Files", command=lambda: self.save_split_files(chunks)).pack(pady=10)
+        except Exception as e:
+            self.show_message(f"Error splitting: {e}")
+            
+    def save_split_files(self, chunks):
+        for idx, chunk in enumerate(chunks):
+            file_path = filedialog.asksaveasfilename(defaultextension=".csv", initialfile=f'grading_sheet_{idx+1}.csv',
+                                                     filetypes=[("CSV files", "*.csv"), ("Excel files", "*.xlsx")])
+            if not file_path:
+                continue
+            if file_path.endswith('.csv'):
+                chunk.to_csv(file_path, index=False)
+            elif file_path.endswith('.xlsx'):
+                chunk.to_excel(file_path, index=False)
+            else:
+                self.show_message("Unsupported file format.")
 
     def merge_grading_sheets_page(self):
         self.clear_frame1()
@@ -122,20 +163,20 @@ class J4SInternModuleHelper:
         tk.Button(self.frame1, text="Select Files", command=self.merge_popup).pack(pady=10)
 
     def merge_files(self,file_paths):
-        dfs = []
-        columns =  "['Sub ID, Submission id','Surname/Name','Username',Submission time',Grade','Feedback comment']"
+        dataframes = []
+        columns =  "['Sub ID', 'Submission id','Surname/Name','Username',Submission time',Grade','Feedback comment']"
         for file_path in file_paths:
             try:
                 if file_path.endswith('.csv'):
-                    dfs.append(pd.read_csv(file_path, usecols=columns))
+                    dataframes.append(pd.read_csv(file_path, usecols=columns))
                 elif file_path.endswith('.xlsx'):
                     sheets = pd.read_excel(file_path, sheet_name=None, usecols=columns)
                     for sheet in sheets.values():
-                        dfs.append(sheet)
+                        dataframes.append(sheet)
             except Exception as e:
                 self.show_message(f"Skipped {file_path}: {e}")
-        if dfs:
-            combined_df = pd.concat(dfs, ignore_index=True)
+        if dataframes:
+            combined_df = pd.concat(dataframes, ignore_index=True)
             combined_df.to_csv('merged_grading_sheet.csv', index=False)
             self.clear_frame1()
             tk.Label(self.frame1, text="Merged Grading Sheet", font=("Arial", 16, "bold")).pack(pady=10)
