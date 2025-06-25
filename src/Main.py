@@ -206,7 +206,7 @@ class J4SInternModuleHelper:
                 
         def start_merge():
             if not file_list:
-                tk.messagebox.showwarning("Warning", "No files selected.")
+                messagebox.showwarning("No Files", "Please add at least one file to merge.")
                 return
             popup.destroy()
             self.merge_files(file_list)
