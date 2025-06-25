@@ -214,8 +214,19 @@ class J4SInternModuleHelper:
             if 'Grade' in row and pd.notna(row['Grade']):
                 grade = int(row['Grade'])
                 feedback = self.feedbacks.get(grade, "No feedback available for this grade.")
-                self.grading_Sheet.at[index, 'Feedback'] = feedback
+                self.grading_Sheet.at[index, 'Feedback comment'] = feedback
         self.grading_Sheet.to_csv(filedialog.asksaveasfilename(filetypes=[("csv","*.csv")]), index=False)
+    
+    def save_feedback(self):
+            for index, text_widget in self.feedback_entries.items():
+                feedback = text_widget.get("1.0", tk.END).strip()
+                self.grading_Sheet.at[index, 'Feedback comment'] = feedback
+            file_path = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV files", "*.csv"), ("Excel files", "*.xlsx")])
+            if file_path:
+                if file_path.endswith('.csv'):
+                    self.grading_Sheet.to_csv(file_path, index=False)
+                elif file_path.endswith('.xlsx'):
+                    self.grading_Sheet.to_excel(file_path, index=False)
     
     def write_individual_feedback(self):
         if self.grading_Sheet is None:
@@ -252,7 +263,8 @@ class J4SInternModuleHelper:
             
         button_frame = tk.Frame(self.frame1)
         button_frame.pack(fill='x', pady=10)
-        tk.Button(button_frame, text="Save Feedback", command=lambda: self.grading_Sheet.to_csv(self.grading_path, index=False)).pack(pady=10)
+        
+        tk.Button(button_frame, text="Save Feedback", command=self.save_feedback).pack(pady=10)
         tk.Button(button_frame, text="Back to Home", command=self.show_home).pack(pady=10)    
         
 
