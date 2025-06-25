@@ -15,6 +15,7 @@ class J4SInternModuleHelper:
         self.all_Students = None
         self.grading_Sheet = None
         self.submitted = None
+        self.grading_path = None
         
         
         self.feedbacks = {}
@@ -30,7 +31,6 @@ class J4SInternModuleHelper:
         self.setup_buttons()
         self.show_home()
         self.load_Feedback()
-        self.frame1.bind("<Configure>", self.resize)
 
     def load_Feedback(self):
         filepath = "data\\generic-feedbacks.xlsx"
@@ -110,6 +110,7 @@ class J4SInternModuleHelper:
                 text = tk.Text(self.frame1, wrap="none", height=8)
                 text.insert(tk.END, chunk.to_string())
                 text.pack(expand=True, fill='both')
+                self.df.to_csv(f'grading_sheet_{idx+1}.csv', index=False)
             tk.Button(self.frame1, text="Back to Home", command=self.show_home).pack(pady=10)
         except Exception as e:
             self.show_message(f"Error splitting: {e}")
@@ -180,7 +181,7 @@ class J4SInternModuleHelper:
         tk.Label(self.frame1, text="Please select a grading sheet to add feedback to:" 
                  "\n"
                  "This program supports both generating automated generic feedback based on the students score and also allows the user to write individual feedback for each student.""").pack(pady=20)
-        tk.Button(self.frame1, text="B", command=self.select_feedback_file).pack(pady=10)
+        tk.Button(self.frame1, text="Select Grading Sheet", command=self.select_feedback_file).pack(pady=10)
         
     def select_feedback_file(self):
         file_path = filedialog.askopenfilename(filetypes=[("CSV or Excel", "*.csv;*.xlsx")])
@@ -188,12 +189,14 @@ class J4SInternModuleHelper:
             return
         if file_path.endswith('.csv'):
             self.grading_Sheet = pd.read_csv(file_path)
+            self.grading_path = file_path
         elif file_path.endswith('.xlsx'):
             self.grading_Sheet = pd.read_excel(file_path)
+            self.grading_path = file_path
         else:
             self.show_message("Unsupported file format.")
             return
-        self.show_feedback_entry()
+        self.feedback_page_part2()
         
     def feedback_page_part2(self):
         self.clear_frame1()
@@ -207,12 +210,51 @@ class J4SInternModuleHelper:
             return
         self.clear_frame1()
         tk.Label(self.frame1, text="Generic Feedback", font=("Arial", 16, "bold")).pack(pady=10)
-        feedbacks = []
         for index, row in self.grading_Sheet.iterrows():
-            continue
+            if 'Grade' in row and pd.notna(row['Grade']):
+                grade = int(row['Grade'])
+                feedback = self.feedbacks.get(grade, "No feedback available for this grade.")
+                self.grading_Sheet.at[index, 'Feedback'] = feedback
+        self.grading_Sheet.to_csv(filedialog.asksaveasfilename(filetypes=[("csv","*.csv")]), index=False)
     
+    def write_individual_feedback(self):
+        if self.grading_Sheet is None:
+            self.show_message("No grading sheet loaded.")
+            return
+        self.clear_frame1()
+        tk.Label(self.frame1, text="Write Individual Feedback", font=("Arial", 16, "bold")).pack(pady=10)
+        tk.Label(self.frame1, text="Please enter feedback for each student:").pack(pady=10)
         
-    
+        
+        canvas = tk.Canvas(self.frame1, width=900, height=700, highlightthickness=0, bd=0)
+        scrollbar = tk.Scrollbar(self.frame1, orient="vertical", command=canvas.yview)
+        frame = tk.Frame(canvas)
+        
+        frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+        
+        canvas.create_window((0, 0), window=frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+        
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+        
+        def on_mousewheel(event):
+            canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        canvas.bind_all("<MouseWheel>", on_mousewheel)
+        
+        self.feedback_entries = {}
+        for index, row in self.grading_Sheet.iterrows():
+            text_label = tk.Label(frame, text=f"Student {index + 1} ({row.get('Surname/Name', 'Unknown')}): Score {row.get('Grade', 'N/A')}")
+            text_label.pack(anchor='w')
+            text = tk.Text(frame, width=80)
+            text.pack(pady=5)
+            self.feedback_entries[index] = text
+            
+        button_frame = tk.Frame(self.frame1)
+        button_frame.pack(fill='x', pady=10)
+        tk.Button(button_frame, text="Save Feedback", command=lambda: self.grading_Sheet.to_csv(self.grading_path, index=False)).pack(pady=10)
+        tk.Button(button_frame, text="Back to Home", command=self.show_home).pack(pady=10)    
+        
 
     def show_message(self, message):
         self.clear_frame1()
@@ -243,16 +285,7 @@ class J4SInternModuleHelper:
             "To get started, please press one of the buttons to the right.\n"
         )
         
-    def resize(self, event):
-       self.resize_widgets(event.width,event.height)
-       
-    def resize_widgets(self, width,height):
-        if(hasattr(self, 'frame1')):
-            for widget in self.frame1.winfo_children():
-                wrap = max(450, min(int(width * 0.8), 1000))
-                text =  max(12, min(20, int(width /50 )))
-                widget.config(font=("Arial", text))
-                widget.config(wraplength=wrap)
+  
                 
 if __name__ == "__main__":
     root = tk.Tk()
