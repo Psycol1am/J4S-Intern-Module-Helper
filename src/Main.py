@@ -53,6 +53,7 @@ class J4SInternModuleHelper:
         tk.Button(self.frame2, text="Split Grading Sheet", width=20, height=2, command=self.split_grading_sheet_page).pack(pady=20)
         tk.Button(self.frame2, text="Merge Grading Sheets", width=20, height=2, command=self.merge_grading_sheets_page).pack(pady=20)
         tk.Button(self.frame2, text="Generate Feedback", width=20, height=2, command=self.generate_feedback_page).pack(pady=20)
+        tk.Button(self.frame2, text="Update Grading Sheet using Submitted", width=21, height=2, wraplength=200, command=self.update_page).pack(pady=20)
 
     def show_home(self):
         self.clear_frame1()
@@ -192,13 +193,13 @@ class J4SInternModuleHelper:
                     ):
                         raise Exception("One or more required columns contain NaN (Null/Invalid) values. Please make sure the subID, Submission id, Surname/Name, Username, Submission time and Grade columns are present and contain valid data.")
                 
-                combined_df.to_csv('merged_grading_sheet.csv', index=False)
+                self.grading_Sheet = combined_df
+                self.save_gradingsheetfile()
                 self.clear_frame1()
                 tk.Label(self.frame1, text="Merged Grading Sheet", font=("Arial", 16, "bold")).pack(pady=10)
                 text = tk.Text(self.frame1, wrap="none", height=15)
                 text.insert(tk.END, combined_df.to_string())
                 text.pack(expand=True, fill='both')
-                tk.Label(self.frame1, text="Merged grading sheet saved as 'merged_grading_sheet.csv'.").pack(pady=10)
                 tk.Button(self.frame1, text="Back to Home", command=self.show_home).pack(pady=10)
             else:
                 self.show_message("No valid files selected.")
@@ -286,12 +287,12 @@ class J4SInternModuleHelper:
             popup.title("Feedback Generated")
             popup.geometry("300x200")
             tk.Label(popup, text="Generic feedback has been generated for all students.").pack(pady=10)
-            tk.Button(popup, text="Save Feedback", command=self.save_feedback).pack(pady=10)
+            tk.Button(popup, text="Save Feedback", command=self.save_gradingsheetfile).pack(pady=10)
         except Exception as e:
             self.show_message(f"Error generating feedback: {e}")
             return
     
-    def save_feedback(self):
+    def save_gradingsheetfile(self):
             file_path = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV files", "*.csv"), ("Excel files", "*.xlsx")])
             if file_path:
                 if file_path.endswith('.csv'):
@@ -345,7 +346,81 @@ class J4SInternModuleHelper:
         listbox.bind('<<ListboxSelect>>', on_select)
         tk.Button(self.frame1, text="Save Feedback", command=save_feedback).pack(pady=10)
         tk.Button(self.frame1, text="Back to Home", command=self.show_home).pack(pady=10)
+        
+
+    def update_page(self):
+        self.clear_frame1()
+        tk.Label(self.frame1, text="Update Existing grading sheet", font=("Arial", 16, "bold")).pack(pady=10)
+        tk.Label(self.frame1, text="This will allow you to update an existing grading sheet by uploading the grading sheet and also the sheet where people have submitted doing so will dynamically update the grading sheet by inputting the submission id and sub ID fields for you ").pack(pady=10)
+        tk.Label(self.frame1, text="Please select the grading sheet you want to update:").pack(pady=10)
+        tk.Button(self.frame1, text="Select Grading Sheet", command=self.select_grading_sheet).pack(pady=10)
+            
+    def select_grading_sheet(self):
+        file_path = filedialog.askopenfilename(filetypes=[("CSV or Excel", "*.csv;*.xlsx")])
+        if not file_path:
+            return
+        if file_path.endswith('.csv'):
+            self.grading_Sheet = pd.read_csv(file_path)
+            self.grading_path = file_path
+        elif file_path.endswith('.xlsx'):
+            self.grading_Sheet = pd.read_excel(file_path)
+            self.grading_path = file_path
+        else:
+            self.show_message("Unsupported file format.")
+            return
+        self.update_page2()
+            
+    def update_page2(self):
+        self.clear_frame1()
+        tk.Label(self.frame1, text="Step 2: Select submitted file").pack(pady=10)
+        tk.Button(self.frame1, text="Select Submitted File", command=lambda: self.select_submitted_file).pack(pady=10)
     
+    def select_submitted_file(self):
+        file_path = filedialog.askopenfilename(filetypes=[("CSV or Excel", "*.csv;*.xlsx")])
+        if not file_path:
+            return
+        if file_path.endswith('.csv'):
+            self.submitted = pd.read_csv(file_path)
+            self.update_grading_sheet()
+        elif file_path.endswith('.xlsx'):
+            self.submitted = pd.read_excel(file_path)
+            self.update_grading_sheet()
+        else:
+            self.show_message("Unsupported file format.")
+            return    
+        
+    def update_grading_sheet(self):
+        if self.grading_Sheet is None or self.submitted is None:
+            self.show_message("Please load both grading sheet and submitted file.")
+            return
+        
+        if 'Submission id' not in self.submitted.columns or 'Sub ID' not in self.submitted.columns:
+            self.show_message("The submitted file must contain 'Submission id' and 'Sub ID' columns.")
+            return
+        
+        if 'Submission id' not in self.grading_Sheet.columns or 'Sub ID' not in self.grading_Sheet.columns:
+            self.show_message("The grading sheet must contain 'Submission id' and 'Sub ID' columns.")
+            return
+        
+        for index, row in self.grading_Sheet.iterrows():
+            sub_id = row.get('Sub ID')
+            submission_id = row.get('Submission id')
+            if pd.isna(sub_id) or pd.isna(submission_id):
+                continue
+            match = self.submitted[self.submitted['Submission id'] == submission_id]
+            if not match.empty:
+                self.grading_Sheet.at[index, 'Sub ID'] = match.iloc[0]['Sub ID']
+        
+        self.clear_frame1()
+        tk.Label(self.frame1, text="Grading Sheet Updated", font=("Arial", 16, "bold")).pack(pady=10)
+        text = tk.Text(self.frame1, wrap="none", height=15)
+        text.insert(tk.END, self.grading_Sheet.to_string())
+        text.pack(expand=True, fill='both')
+        tk.Button(self.frame1, text="Save Updated Grading Sheet", command=self.save_gradingsheetfile).pack(pady=10)
+        
+        
+            
+        
     
     
     def show_message(self, message):
