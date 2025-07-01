@@ -116,32 +116,35 @@ class J4SInternModuleHelper:
             self.show_message(f"Error splitting: {e}")
     
     def perform_all_students_split(self, value):
-        try:
             students_per_marker = int(value)
             if self.all_Students is None:
                 self.show_message("No all students file loaded.")
                 return
-            if 'First name' not in self.df.columns or 'Last name' not in self.df.columns or 'Username' not in self.df.columns:
+            if 'First name' not in self.all_Students.columns or 'Last name' not in self.all_Students.columns or 'Username' not in self.all_Students.columns:
                 self.show_message("The grading sheet must contain 'Username','First name' and 'Last name' columns.")
                 return
-            self.df['Surname/Name'] = self.df['Last name'] + ' ' + self.df['First name'].astype(str).str.strip()
-            chunks = [self.df[i:i + students_per_marker] for i in range(0, len(self.df), students_per_marker)]
+            if pd.isna(self.all_Students[['First name', 'Last name', 'Username']]).any().any():
+                self.show_message("The grading sheet contains missing values in 'First name', 'Last name', or 'Username' columns.")
+                return
+            self.all_Students['Surname/Name'] = self.all_Students['Last name'] + ' ' + self.all_Students['First name'].astype(str).str.strip()
+            splits = [self.all_Students[i:i + students_per_marker] for i in range(0, len(self.all_Students), students_per_marker)]
     
             self.clear_frame1()
             tk.Label(self.frame1, text="Split Results", font=("Arial", 16, "bold")).pack(pady=10)
             desired_columns = ['Sub ID', 'Submission id', 'Surname/Name', 'Username', 'Submission time', 'Grade', 'Feedback comment']
-            for index, split in enumerate(chunks):
-                split = split.reindex(columns=desired_columns, fill_value="-")
-                split_label = tk.Label(self.frame1, text=f"Grading Sheet {index+1}")
-                split_label.pack()
-                text = tk.Text(self.frame1, wrap="none", height=8)
-                text.insert(tk.END, split.to_string())
-                text.pack(expand=True, fill='both')
-                
-            tk.Button(self.frame1, text="Back to Home", command=self.show_home).pack(pady=10)
-            tk.Button(self.frame1, text="Save Split Files", command=lambda: self.save_split_files(chunks)).pack(pady=10)
-        except Exception as e:
-            self.show_message(f"Error splitting: {e}")
+            try:
+                for index, split in enumerate(splits):
+                    split = split.reindex(columns=desired_columns, fill_value="-")
+                    split_label = tk.Label(self.frame1, text=f"Grading Sheet {index+1}")
+                    split_label.pack()
+                    text = tk.Text(self.frame1, wrap="none", height=8)
+                    text.insert(tk.END, split.to_string())
+                    text.pack(expand=True, fill='both')
+                    
+                tk.Button(self.frame1, text="Back to Home", command=self.show_home).pack(pady=10)
+                tk.Button(self.frame1, text="Save Split Files", command=lambda: self.save_split_files(splits)).pack(pady=10)
+            except Exception as e:
+                self.show_message(f"Error splitting: {e}")
             
     def save_split_files(self, splits):
         try:
@@ -168,32 +171,39 @@ class J4SInternModuleHelper:
     def merge_files(self,file_paths):
         dataframes = []
         columns =  ['Sub ID', 'Submission id', 'Surname/Name', 'Username', 'Submission time', 'Grade', 'Feedback comment']
-        for file_path in file_paths:
-            try:
+        try:
+            for file_path in file_paths:
                 if file_path.endswith('.csv'):
                     dataframes.append(pd.read_csv(file_path, usecols=columns))
                 elif file_path.endswith('.xlsx'):
                     sheets = pd.read_excel(file_path, sheet_name=None, usecols=columns)
                     for sheet in sheets.values():
                         dataframes.append(sheet)
-            except Exception as e:
-                self.show_message(f"Skipped {file_path}: {e}")
-        if dataframes:
-            combined_df = pd.concat(dataframes, ignore_index=True)
-            for index, row in combined_df.iterrows():
-                if pd.isna(row['Sub ID']) | pd.isna(row['Submission id']) | pd.isna(row['Surname/Name']) | pd.isna(row['Username']) | pd.isna(row['Submission time']) | pd.isna(row['Grade']):
-                    self.show_message(f"Missing 'Sub ID' or 'Submission id' in row {index+1}. Please check the files.")
-                    return
+            if dataframes:
+                combined_df = pd.concat(dataframes, ignore_index=True)
+                for index, row in combined_df.iterrows():
+                    if (
+                        pd.isna(row['Sub ID']) or
+                        pd.isna(row['Submission id']) or
+                        pd.isna(row['Surname/Name']) or
+                        pd.isna(row['Username']) or
+                        pd.isna(row['Submission time']) or
+                        pd.isna(row['Grade'])
+                    ):
+                        raise Exception("One or more required columns contain NaN (Null/Invalid) values. Please make sure the subID, Submission id, Surname/Name, Username, Submission time and Grade columns are present and contain valid data.")
+                
                 combined_df.to_csv('merged_grading_sheet.csv', index=False)
-            self.clear_frame1()
-            tk.Label(self.frame1, text="Merged Grading Sheet", font=("Arial", 16, "bold")).pack(pady=10)
-            text = tk.Text(self.frame1, wrap="none", height=15)
-            text.insert(tk.END, combined_df.to_string())
-            text.pack(expand=True, fill='both')
-            tk.Label(self.frame1, text="Merged grading sheet saved as 'merged_grading_sheet.csv'.").pack(pady=10)
-            tk.Button(self.frame1, text="Back to Home", command=self.show_home).pack(pady=10)
-        else:
-            self.show_message("No valid files selected.")
+                self.clear_frame1()
+                tk.Label(self.frame1, text="Merged Grading Sheet", font=("Arial", 16, "bold")).pack(pady=10)
+                text = tk.Text(self.frame1, wrap="none", height=15)
+                text.insert(tk.END, combined_df.to_string())
+                text.pack(expand=True, fill='both')
+                tk.Label(self.frame1, text="Merged grading sheet saved as 'merged_grading_sheet.csv'.").pack(pady=10)
+                tk.Button(self.frame1, text="Back to Home", command=self.show_home).pack(pady=10)
+            else:
+                self.show_message("No valid files selected.")
+        except Exception as e:
+            self.show_message(f"Error merging files: {e}")
 
 
     def merge_popup(self):
