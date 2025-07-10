@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import filedialog
 import pandas as pd
+import shutil
 
 class FeedbackMixin:
     def generate_feedback_page(self):
@@ -101,3 +102,41 @@ class FeedbackMixin:
         listbox.bind('<<ListboxSelect>>', on_select)
         tk.Button(self.frame1, text="Save Feedback", command=save_feedback).pack(pady=10)
         tk.Button(self.frame1, text="Back to Home", command=self.show_home).pack(pady=10)
+        
+    def upload_feedback_page(self):
+        self.clear_frame1()
+        tk.Label(self.frame1, text="Upload Generic Feedback Sheet \n This should be a excel sheet with the columns Marks and Feedback. Marks should contain a mark range such as 35-40 and then the feedback column should contain that mark brackets generic feedback such as Good job!", font=("Arial", 16),wraplength=900).pack(pady=10)
+        tk.Label(self.frame1, text="Please select a feedback sheet file to upload:").pack(pady=20)
+        tk.Button(self.frame1, text="Select Feedback Sheet", command=self.upload_feedback_sheet).pack(pady=10)
+    
+    def upload_feedback_sheet(self):
+        file_path = filedialog.askopenfilename(
+            filetypes=[("Excel or CSV files", "*.xlsx;*.csv")]
+        )
+        if not file_path:
+            return
+
+        
+        dest_path = "data\\generic-feedbacks.xlsx"
+
+        try:
+            
+            if file_path.endswith('.csv'):
+                df = pd.read_csv(file_path)
+            else:
+                df = pd.read_excel(file_path)
+            if not {'Marks', 'Feedback'}.issubset(df.columns):
+                self.show_message("The file must contain 'Marks' and 'Feedback' columns.")
+                return
+
+           
+            if file_path.endswith('.csv'):
+                
+                df.to_excel(dest_path, index=False)
+            else:
+                shutil.copy(file_path, dest_path)
+
+            self.show_message("Feedback sheet uploaded successfully. Reloading feedbacks...")
+            self.load_Feedback()
+        except Exception as e:
+            self.show_message(f"Error uploading feedback sheet: {e}")

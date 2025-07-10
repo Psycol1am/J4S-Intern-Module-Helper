@@ -35,6 +35,7 @@ class J4SInternModuleHelper(SplitMixin, MergeMixin, FeedbackMixin):
         self.load_Feedback()
 
     def load_Feedback(self):
+        self.feedbacks = {}
         filepath = "data\\generic-feedbacks.xlsx"
         try:
             feedback = pd.read_excel(filepath, sheet_name=None)
@@ -51,9 +52,10 @@ class J4SInternModuleHelper(SplitMixin, MergeMixin, FeedbackMixin):
     def setup_buttons(self):
         for widget in self.frame2.winfo_children():
             widget.destroy()
-        tk.Button(self.frame2, text="Split Grading Sheet", width=20, height=2, command=self.split_grading_sheet_page).pack(pady=20)
-        tk.Button(self.frame2, text="Merge Grading Sheets", width=20, height=2, command=self.merge_grading_sheets_page).pack(pady=20)
-        tk.Button(self.frame2, text="Generate Feedback", width=20, height=2, command=self.generate_feedback_page).pack(pady=20)
+        tk.Button(self.frame2, text="Split Grading Sheet", width=30, height=2, command=self.split_grading_sheet_page).pack(pady=20)
+        tk.Button(self.frame2, text="Merge Grading Sheets", width=30, height=2, command=self.merge_grading_sheets_page).pack(pady=20)
+        tk.Button(self.frame2, text="Generate Feedback", width=30, height=2, command=self.generate_feedback_page).pack(pady=20)
+        tk.Button(self.frame2, text="Upload Generic Feedback Sheet", width=30, height=2, command=self.upload_feedback_page).pack(pady=20)
 
     def show_home(self):
         self.clear_frame1()

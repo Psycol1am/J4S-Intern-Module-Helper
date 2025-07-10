@@ -8,9 +8,9 @@ class SplitMixin:
     def split_grading_sheet_page(self):
         self.clear_frame1()
         tk.Label(self.frame1, text="Split Grading Sheet", font=("Arial", 16, "bold")).pack(pady=10)
-        tk.Label(self.frame1, text="Please upload the file of all students that can be downloaded from moodle (Image Below). This will be used to create numerous grading sheets split by a number of students the user specifies.").pack()
+        tk.Label(self.frame1, text="Please upload the file of all students that can be downloaded from moodle (Image Below). This will be used to create numerous grading sheets split by a number of students the user specifies.", wraplength=900).pack()
         tk.Button(self.frame1, text="Select File", command=self.select_split_file).pack(pady=10)
-        tk.Label(self.frame1, text="Example of all students sheet:").pack(pady=10)
+        tk.Label(self.frame1, text="Example of all students sheet: \n \n (Note: The sheet you upload only needs to have the First Name, Last Name and Username columns at a minimum)").pack(pady=10)
         img = Image.open("data/Example All students.png")
         img = img.resize((900, 700))
         tk_img = ImageTk.PhotoImage(img)
