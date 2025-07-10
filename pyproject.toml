@@ -6,16 +6,23 @@ authors = [
     {name = "Liam-James-Ford",email = "19067511@stu.mmu.ac.uk"}
 ]
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.13,<3.14"
 dependencies = [
     "pandas (>=2.3.0,<3.0.0)",
     "openpyxl (>=3.1.5,<4.0.0)",
-    "pillow (>=11.2.1,<12.0.0)"
+    "pillow (>=11.2.1,<12.0.0)",
+    "pyinstaller (>=6.14.2,<7.0.0)"
 ]
 
 [tool.poetry]
 packages = [{include = "j4s_intern_module_helper", from = "src"}]
 
+
+[tool.poetry.group.dev.dependencies]
+pandas = "^2.3.1"
+openpyxl = "^3.1.5"
+pillow = "^11.3.0"
+pyinstaller = "^6.14.2"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
