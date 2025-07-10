@@ -67,11 +67,14 @@ class FeedbackMixin:
             return
         self.clear_frame1()
         tk.Label(self.frame1, text="Select a student to edit feedback:", font=("Arial", 14, "bold")).pack(pady=10)
-        listbox = tk.Listbox(self.frame1, width=80, height=20)
+        listbox = tk.Listbox(self.frame1, width=80, height=20, exportselection=False)
         listbox.pack(pady=10, padx=10, fill='x')
         try:
             for index, row in self.grading_Sheet.iterrows():
-                display = f"{row.get('Surname/Name', '')} ({row.get('Username', '')}) Feedback: {row.get('Feedback comment', 'N/A')}"
+                feedback_val = row.get('Feedback comment', '')
+                if pd.isna(feedback_val) or not str(feedback_val).strip():
+                    feedback_val = "Blank"
+                display = f"{row.get('Surname/Name', '')} ({row.get('Username', '')}) Feedback: {feedback_val}"
                 listbox.insert(tk.END, display)
         except Exception as e:
             self.show_message(f"Error loading grading sheet: {e}")
@@ -81,28 +84,45 @@ class FeedbackMixin:
         feedback_text = tk.Text(self.frame1, width=80, height=5)
         feedback_text.pack(pady=5)
 
-        def on_select(event):
+        def on_select(event=None):
             selection = listbox.curselection()
             if not selection:
                 return
             index = selection[0]
             feedback = self.grading_Sheet.iloc[index].get('Feedback comment', '')
+            if pd.isna(feedback) or not str(feedback).strip():
+                feedback = ""
             feedback_text.delete("1.0", tk.END)
             feedback_text.insert(tk.END, feedback)
 
-        def save_feedback():
+        def update_and_autosave(event=None):
             selection = listbox.curselection()
             if not selection:
-                self.show_message("Please select a student.")
                 return
             index = selection[0]
             feedback = feedback_text.get("1.0", tk.END).strip()
+            # Auto-save to DataFrame
             self.grading_Sheet.at[index, 'Feedback comment'] = feedback
-            self.show_message("Feedback saved.")
+            display_feedback = feedback if feedback else "Blank"
+            row = self.grading_Sheet.iloc[index]
+            display = f"{row.get('Surname/Name', '')} ({row.get('Username', '')}) Feedback: {display_feedback}"
+            listbox.delete(index)
+            listbox.insert(index, display)
+            listbox.selection_set(index)
+
+        def save_feedback():
+            self.save_gradingsheetfile()
+            self.show_message("Feedback saved to file.")
 
         listbox.bind('<<ListboxSelect>>', on_select)
+        feedback_text.bind("<KeyRelease>", update_and_autosave)
+
         tk.Button(self.frame1, text="Save Feedback", command=save_feedback).pack(pady=10)
         tk.Button(self.frame1, text="Back to Home", command=self.show_home).pack(pady=10)
+
+        if listbox.size() > 0:
+            listbox.selection_set(0)
+            on_select()
         
     def upload_feedback_page(self):
         self.clear_frame1()
