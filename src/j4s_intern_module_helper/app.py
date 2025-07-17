@@ -5,6 +5,7 @@ import pandas as pd
 import tkinter.ttk as ttk
 
 
+
 from .split import SplitMixin
 from .merge import MergeMixin
 from .feedback import FeedbackMixin
@@ -50,6 +51,7 @@ class J4SInternModuleHelper(SplitMixin, MergeMixin, FeedbackMixin):
             print(f"Error loading feedbacks: {e}")
         if self.feedbacks == {}:
             print("No feedbacks loaded. Please check the file path and format.")
+        print(self.feedbacks)
 
     def setup_buttons(self):
         for widget in self.frame2.winfo_children():
@@ -58,6 +60,7 @@ class J4SInternModuleHelper(SplitMixin, MergeMixin, FeedbackMixin):
         tk.Button(self.frame2, text="Merge Grading Sheets", width=30, height=2, command=self.merge_grading_sheets_page).pack(pady=20)
         tk.Button(self.frame2, text="Generate Feedback", width=30, height=2, command=self.generate_feedback_page).pack(pady=20)
         tk.Button(self.frame2, text="Upload Generic Feedback Sheet", width=30, height=2, command=self.upload_feedback_page).pack(pady=20)
+        tk.Button(self.frame2, text="Update Grading Sheet using Submitted Sheet", width=30, height=2, command=self.update_grading_sheet_using_submitted).pack(pady=20)
 
     def show_home(self):
         self.clear_frame1()
@@ -92,3 +95,67 @@ class J4SInternModuleHelper(SplitMixin, MergeMixin, FeedbackMixin):
             "\n"
             "To get started, please press one of the buttons to the right.\n"
         )
+    
+    def update_grading_sheet_using_submitted(self):
+        self.clear_frame1()
+        tk.Label(self.frame1, text="Update Grading Sheet using Submitted Sheet", font=("Arial", 16, "bold")).pack(pady=10)
+
+        submitted_path_var = tk.StringVar()
+        graded_path_var = tk.StringVar()
+
+        def select_submitted():
+            path = filedialog.askopenfilename(filetypes=[("CSV files", "*.csv"), ("Excel files", "*.xlsx")])
+            submitted_path_var.set(path)
+
+        def select_graded():
+            path = filedialog.askopenfilename(filetypes=[("CSV files", "*.csv"), ("Excel files", "*.xlsx")])
+            graded_path_var.set(path)
+
+        tk.Button(self.frame1, text="Select Submitted Sheet", command=select_submitted).pack(pady=5)
+        tk.Label(self.frame1, textvariable=submitted_path_var, wraplength=900).pack(pady=2)
+        tk.Button(self.frame1, text="Select Graded Sheet", command=select_graded).pack(pady=5)
+        tk.Label(self.frame1, textvariable=graded_path_var, wraplength=900).pack(pady=2)
+
+        def run_update():
+            submitted_path = submitted_path_var.get()
+            graded_path = graded_path_var.get()
+            if not submitted_path or not graded_path:
+                self.show_message("Please select both files.")
+                return
+
+            # Read submitted sheet
+            if submitted_path.endswith('.csv'):
+                submitted_df = pd.read_csv(submitted_path, encoding="utf-8")
+            else:
+                submitted_df = pd.read_excel(submitted_path)
+            # Read graded sheet
+            if graded_path.endswith('.csv'):
+                graded_df = pd.read_csv(graded_path, encoding="utf-8")
+            else:
+                graded_df = pd.read_excel(graded_path)
+
+            # Set index for fast lookup
+            submitted_df.set_index('Username', inplace=True)
+
+            # Update columns in graded_df
+            for col in ['Sub ID', 'Submission id', 'Submission time']:
+                if col in submitted_df.columns and col in graded_df.columns:
+                    graded_df[col] = graded_df['Username'].map(submitted_df[col])
+
+            self.updated_grading_df = graded_df
+
+            tk.Label(self.frame1, text="Update complete! Click below to save the updated graded sheet.").pack(pady=10)
+            tk.Button(self.frame1, text="Save Updated Graded Sheet", command=save_updated).pack(pady=10)
+
+        def save_updated():
+            file_path = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV files", "*.csv"), ("Excel files", "*.xlsx")])
+            if file_path:
+                if file_path.endswith('.csv'):
+                    self.updated_grading_df.to_csv(file_path, index=False, encoding="utf-8")
+                else:
+                    self.updated_grading_df.to_excel(file_path, index=False)
+                self.show_message("Updated graded sheet saved.")
+
+        tk.Button(self.frame1, text="Update Graded Sheet", command=run_update).pack(pady=20)
+        tk.Button(self.frame1, text="Back to Home", command=self.show_home).pack(pady=10)
+        

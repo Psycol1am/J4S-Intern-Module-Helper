@@ -11,35 +11,51 @@ class MergeMixin:
 
     def merge_files(self, file_paths):
         dataframes = []
-        columns =  ['Sub ID', 'Submission id', 'Surname/Name', 'Username', 'Submission time', 'Grade', 'Feedback comment']
+        columns = ['Sub ID', 'Submission id', 'Surname/Name', 'Username', 'Submission time', 'Grade', 'Feedback comment']
+        skipped_students = []
         try:
             for file_path in file_paths:
                 if file_path.endswith('.csv'):
-                    dataframes.append(pd.read_csv(file_path, usecols=columns))
+                    dataframes.append(pd.read_csv(file_path, usecols=columns, encoding="utf-8"))
                 elif file_path.endswith('.xlsx'):
                     sheets = pd.read_excel(file_path, sheet_name=None, usecols=columns)
                     for sheet in sheets.values():
                         dataframes.append(sheet)
             if dataframes:
                 combined_df = pd.concat(dataframes, ignore_index=True)
+                valid_rows = []
                 for index, row in combined_df.iterrows():
-                    if (
-                        pd.isna(row['Sub ID']) or
-                        pd.isna(row['Submission id']) or
-                        pd.isna(row['Surname/Name']) or
-                        pd.isna(row['Username']) or
-                        pd.isna(row['Submission time']) or
-                        pd.isna(row['Grade'])
-                    ):
-                        raise Exception("One or more required columns contain NaN (Null/Invalid) values. Please make sure the subID, Submission id, Surname/Name, Username, Submission time and Grade columns are present and contain valid data.")
-                self.grading_Sheet = combined_df
+                    if pd.isna(row['Grade']) and pd.isna(row['Submission id']) and pd.isna(row['Sub ID']):
+                        skipped_students.append(row)
+                    else:
+                        valid_rows.append(row)
+                valid_df = pd.DataFrame(valid_rows, columns=columns)
+                skipped_df = pd.DataFrame(skipped_students, columns=columns)
+                if valid_df.empty:
+                    self.show_message("No valid students found please check that the submission id,Sub ID and grade columns are not empty.")
+                    return
+                self.grading_Sheet = valid_df
                 self.save_gradingsheetfile()
                 self.clear_frame1()
                 tk.Label(self.frame1, text="Merged Grading Sheet", font=("Arial", 16, "bold")).pack(pady=10)
                 text = tk.Text(self.frame1, wrap="none", height=15)
-                text.insert(tk.END, combined_df.to_string())
+                text.insert(tk.END, valid_df.to_string())
                 text.pack(expand=True, fill='both')
                 tk.Button(self.frame1, text="Back to Home", command=self.show_home).pack(pady=10)
+                if not skipped_df.empty:
+                    def save_skipped():
+                        file_path = filedialog.asksaveasfilename(
+                            defaultextension=".csv",
+                            filetypes=[("CSV files", "*.csv"), ("Excel files", "*.xlsx")]
+                        )
+                        if file_path:
+                            if file_path.endswith('.csv'):
+                                skipped_df.to_csv(file_path, index=False, encoding="utf-8")
+                            elif file_path.endswith('.xlsx'):
+                                skipped_df.to_excel(file_path, index=False)
+                            self.show_message("Skipped students file saved.")
+                    tk.Label(self.frame1, text=f"{len(skipped_df)} students skipped (Missing data in the submission ID, Sub ID, or Grade columns).").pack(pady=10)
+                    tk.Button(self.frame1, text="Save Skipped Students List", command=save_skipped).pack(pady=10)
             else:
                 self.show_message("No valid files selected.")
         except Exception as e:

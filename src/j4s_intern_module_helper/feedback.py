@@ -1,8 +1,10 @@
 import tkinter as tk
 from tkinter import filedialog
+import unicodedata
 import pandas as pd
 import shutil
 from .utils import resource_path
+
 
 class FeedbackMixin:
     def generate_feedback_page(self):
@@ -16,7 +18,7 @@ class FeedbackMixin:
         if not file_path:
             return
         if file_path.endswith('.csv'):
-            self.grading_Sheet = pd.read_csv(file_path)
+            self.grading_Sheet = pd.read_csv(file_path, encoding="utf-8")
             self.grading_path = file_path
         elif file_path.endswith('.xlsx'):
             self.grading_Sheet = pd.read_excel(file_path)
@@ -54,10 +56,10 @@ class FeedbackMixin:
             return
 
     def save_gradingsheetfile(self):
-        file_path = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV files", "*.csv"), ("Excel files", "*.xlsx")])
+        file_path = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel files", "*.xlsx"), ("CSV files", "*.csv"),])
         if file_path:
             if file_path.endswith('.csv'):
-                self.grading_Sheet.to_csv(file_path, index=False)
+                self.grading_Sheet.to_csv(file_path, index=False, encoding="utf-8")
             elif file_path.endswith('.xlsx'):
                 self.grading_Sheet.to_excel(file_path, index=False)
 
@@ -67,17 +69,46 @@ class FeedbackMixin:
             return
         self.clear_frame1()
         tk.Label(self.frame1, text="Select a student to edit feedback:", font=("Arial", 14, "bold")).pack(pady=10)
+
+        
+        search_var = tk.StringVar()
+        search_entry = tk.Entry(self.frame1, textvariable=search_var, width=40)
+        search_entry.pack(pady=5)
+        tk.Label(self.frame1, text="Search by Username or ID").pack()
+
+        
         listbox = tk.Listbox(self.frame1, width=80, height=20, exportselection=False)
         listbox.pack(pady=10, padx=10, fill='x')
-        try:
+
+       
+        self._student_display = []
+        self._student_indices = []
+
+        def populate_listbox(filter_text=""):
+            listbox.delete(0, tk.END)
+            self._student_display.clear()
+            self._student_indices.clear()
             for index, row in self.grading_Sheet.iterrows():
                 feedback_val = row.get('Feedback comment', '')
                 if pd.isna(feedback_val) or not str(feedback_val).strip():
                     feedback_val = "Blank"
-                display = f"{row.get('Surname/Name', '')} ({row.get('Username', '')}) Feedback: {feedback_val}"
-                listbox.insert(tk.END, display)
-        except Exception as e:
-            self.show_message(f"Error loading grading sheet: {e}")
+                username = str(row.get('Username', ''))
+                display = f"{row.get('Surname/Name', '')} ({username}) Feedback: {feedback_val}"
+                # Filter by username or ID
+                if filter_text.lower() in username.lower():
+                    listbox.insert(tk.END, display)
+                    self._student_display.append(display)
+                    self._student_indices.append(index)
+                elif filter_text == "":
+                    listbox.insert(tk.END, display)
+                    self._student_display.append(display)
+                    self._student_indices.append(index)
+
+        def on_search(*args):
+            filter_text = search_var.get()
+            populate_listbox(filter_text)
+
+        search_var.trace_add("write", on_search)
 
         feedback_label = tk.Label(self.frame1, text="Feedback:")
         feedback_label.pack(pady=(20, 0))
@@ -88,8 +119,9 @@ class FeedbackMixin:
             selection = listbox.curselection()
             if not selection:
                 return
-            index = selection[0]
-            feedback = self.grading_Sheet.iloc[index].get('Feedback comment', '')
+            lb_index = selection[0]
+            df_index = self._student_indices[lb_index]
+            feedback = self.grading_Sheet.iloc[df_index].get('Feedback comment', '')
             if pd.isna(feedback) or not str(feedback).strip():
                 feedback = ""
             feedback_text.delete("1.0", tk.END)
@@ -99,16 +131,16 @@ class FeedbackMixin:
             selection = listbox.curselection()
             if not selection:
                 return
-            index = selection[0]
+            lb_index = selection[0]
+            df_index = self._student_indices[lb_index]
             feedback = feedback_text.get("1.0", tk.END).strip()
-            # Auto-save to DataFrame
-            self.grading_Sheet.at[index, 'Feedback comment'] = feedback
+            self.grading_Sheet.at[df_index, 'Feedback comment'] = feedback
             display_feedback = feedback if feedback else "Blank"
-            row = self.grading_Sheet.iloc[index]
+            row = self.grading_Sheet.iloc[df_index]
             display = f"{row.get('Surname/Name', '')} ({row.get('Username', '')}) Feedback: {display_feedback}"
-            listbox.delete(index)
-            listbox.insert(index, display)
-            listbox.selection_set(index)
+            listbox.delete(lb_index)
+            listbox.insert(lb_index, display)
+            listbox.selection_set(lb_index)
 
         def save_feedback():
             self.save_gradingsheetfile()
@@ -120,6 +152,7 @@ class FeedbackMixin:
         tk.Button(self.frame1, text="Save Feedback", command=save_feedback).pack(pady=10)
         tk.Button(self.frame1, text="Back to Home", command=self.show_home).pack(pady=10)
 
+        populate_listbox()
         if listbox.size() > 0:
             listbox.selection_set(0)
             on_select()
@@ -161,3 +194,5 @@ class FeedbackMixin:
             self.load_Feedback()
         except Exception as e:
             self.show_message(f"Error uploading feedback sheet: {e}")
+            
+            
