@@ -123,24 +123,26 @@ class J4SInternModuleHelper(SplitMixin, MergeMixin, FeedbackMixin):
                 self.show_message("Please select both files.")
                 return
 
-            # Read submitted sheet
+           
             if submitted_path.endswith('.csv'):
                 submitted_df = pd.read_csv(submitted_path, encoding="utf-8")
             else:
                 submitted_df = pd.read_excel(submitted_path)
-            # Read graded sheet
+            
             if graded_path.endswith('.csv'):
                 graded_df = pd.read_csv(graded_path, encoding="utf-8")
             else:
                 graded_df = pd.read_excel(graded_path)
 
-            # Set index for fast lookup
+            
             submitted_df.set_index('Username', inplace=True)
 
-            # Update columns in graded_df
-            for col in ['Sub ID', 'Submission id', 'Submission time']:
-                if col in submitted_df.columns and col in graded_df.columns:
-                    graded_df[col] = graded_df['Username'].map(submitted_df[col])
+            for idx, row in graded_df.iterrows():
+                username = row.get('Username')
+                if pd.notna(username) and username in submitted_df.index:
+                    for col in ['Sub ID', 'Submission id', 'Submission time']:
+                        if col in submitted_df.columns and col in graded_df.columns:
+                            graded_df.at[idx, col] = submitted_df.at[username, col]
 
             self.updated_grading_df = graded_df
 

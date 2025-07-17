@@ -107,16 +107,20 @@ class SplitMixin:
         if pd.isna(self.all_Students[['First name', 'Last name', 'Username']]).any().any():
             self.show_message("The grading sheet contains missing values in 'First name', 'Last name', or 'Username' columns.")
             return
+        
+        for col in ['First name', 'Last name', 'Username']:
+            self.all_Students[col] = self.all_Students[col].replace('-', '')
 
         self.all_Students['Surname/Name'] = self.all_Students['Last name'] + ' ' + self.all_Students['First name'].astype(str).str.strip()
-        desired_columns = ['Sub ID', 'Submission id', 'Surname/Name', 'Username', 'Submission time', 'Grade', 'Feedback comment']
+        desired_columns = ['Sub ID', 'Submission id', 'Surname/Name', 'Username', 'Submission time', 'Grade', 'Feedback comment','Marker']
 
         splits = []
         start = 0
         for marker, count in assignments:
             end = start + count
             split = self.all_Students.iloc[start:end].copy()
-            split = split.reindex(columns=desired_columns, fill_value="-")
+            split = split.reindex(columns=desired_columns, fill_value="")
+            split['Marker'] = marker
             splits.append((marker, split))
             start = end
 

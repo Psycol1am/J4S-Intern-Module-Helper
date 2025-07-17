@@ -11,7 +11,7 @@ class MergeMixin:
 
     def merge_files(self, file_paths):
         dataframes = []
-        columns = ['Sub ID', 'Submission id', 'Surname/Name', 'Username', 'Submission time', 'Grade', 'Feedback comment']
+        columns = ['Sub ID', 'Submission id', 'Surname/Name', 'Username', 'Submission time', 'Grade', 'Feedback comment', 'Marker']
         skipped_students = []
         try:
             for file_path in file_paths:
@@ -28,6 +28,11 @@ class MergeMixin:
                     if pd.isna(row['Grade']) and pd.isna(row['Submission id']) and pd.isna(row['Sub ID']):
                         skipped_students.append(row)
                     else:
+                        feedback = row.get('Feedback comment', '')
+                        marker = row.get('Marker', '')
+                        if pd.notna(marker) and str(marker).strip():
+                            feedback = f"{feedback} - Marked by {marker}"
+                        row['Feedback comment'] = feedback
                         valid_rows.append(row)
                 valid_df = pd.DataFrame(valid_rows, columns=columns)
                 skipped_df = pd.DataFrame(skipped_students, columns=columns)
