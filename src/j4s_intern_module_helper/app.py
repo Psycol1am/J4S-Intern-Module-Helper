@@ -56,11 +56,12 @@ class J4SInternModuleHelper(SplitMixin, MergeMixin, FeedbackMixin):
     def setup_buttons(self):
         for widget in self.frame2.winfo_children():
             widget.destroy()
-        tk.Button(self.frame2, text="Split Grading Sheet", width=30, height=2, command=self.split_grading_sheet_page).pack(pady=20)
-        tk.Button(self.frame2, text="Merge Grading Sheets", width=30, height=2, command=self.merge_grading_sheets_page).pack(pady=20)
-        tk.Button(self.frame2, text="Generate Feedback", width=30, height=2, command=self.generate_feedback_page).pack(pady=20)
-        tk.Button(self.frame2, text="Upload Generic Feedback Sheet", width=30, height=2, command=self.upload_feedback_page).pack(pady=20)
-        tk.Button(self.frame2, text="Update Grading Sheet using Submitted Sheet", width=30, height=2, command=self.update_grading_sheet_using_submitted).pack(pady=20)
+        tk.Button(self.frame2, text="Split Grading Sheet", width=40, height=2, command=self.split_grading_sheet_page).pack(pady=20)
+        tk.Button(self.frame2, text="Merge Grading Sheets", width=40, height=2, command=self.merge_grading_sheets_page).pack(pady=20)
+        tk.Button(self.frame2, text="Generate Feedback", width=40, height=2, command=self.generate_feedback_page).pack(pady=20)
+        tk.Button(self.frame2, text="Upload Generic Feedback Sheet", width=40, height=2, command=self.upload_feedback_page).pack(pady=20)
+        tk.Button(self.frame2, text="Update Grading Sheet using Submitted Sheet", width=40, height=2, wraplength=600, command=self.update_grading_sheet_using_submitted).pack(pady=20)
+        tk.Button(self.frame2, text="Search User by ID", width=40, height=2, wraplength=400, command=self.search_student_page_select_sheet).pack(pady=20)
 
     def show_home(self):
         self.clear_frame1()
@@ -161,3 +162,81 @@ class J4SInternModuleHelper(SplitMixin, MergeMixin, FeedbackMixin):
         tk.Button(self.frame1, text="Update Graded Sheet", command=run_update).pack(pady=20)
         tk.Button(self.frame1, text="Back to Home", command=self.show_home).pack(pady=10)
         
+    def search_student_page_select_sheet(self):
+        """Page to select grading sheet before searching for a student."""
+        self.clear_frame1()
+        tk.Label(self.frame1, text="Select a grading sheet to search for students:", font=("Arial", 16, "bold")).pack(pady=10)
+        def select_sheet():
+            file_path = filedialog.askopenfilename(filetypes=[("CSV files", "*.csv"), ("Excel files", "*.xlsx")])
+            if file_path:
+                if file_path.endswith('.csv'):
+                    self.grading_Sheet = pd.read_csv(file_path, encoding="utf-8")
+                else:
+                    self.grading_Sheet = pd.read_excel(file_path)
+                self.search_student_page()
+        tk.Button(self.frame1, text="Select Grading Sheet", command=select_sheet).pack(pady=20)
+        tk.Button(self.frame1, text="Back to Home", command=self.show_home).pack(pady=10)
+
+    def search_student_page(self):
+        """Search for a student by Username or ID (after grading sheet is loaded)."""
+        if self.grading_Sheet is None:
+            self.show_message("No grading sheet loaded.")
+            return
+        self.clear_frame1()
+        tk.Label(self.frame1, text="Search for a student by Username or ID", font=("Arial", 14, "bold")).pack(pady=10)
+
+        search_var = tk.StringVar()
+        search_entry = tk.Entry(self.frame1, textvariable=search_var, width=40)
+        search_entry.pack(pady=5)
+        tk.Label(self.frame1, text="Search by Username or ID").pack()
+
+        listbox = tk.Listbox(self.frame1, width=80, height=20, exportselection=False)
+        listbox.pack(pady=10, padx=10, fill='x')
+
+        self._student_display = []
+        self._student_indices = []
+
+        def populate_listbox(filter_text=""):
+            listbox.delete(0, tk.END)
+            self._student_display.clear()
+            self._student_indices.clear()
+            for index, row in self.grading_Sheet.iterrows():
+                username = str(row.get('Username', ''))
+                id_part = username.split('@')[0] if '@' in username else username
+                display = f"{row.get('Surname/Name', '')} ({username})"
+                if filter_text.lower() in username.lower() or filter_text.lower() in id_part.lower() or filter_text == "":
+                    listbox.insert(tk.END, display)
+                    self._student_display.append(display)
+                    self._student_indices.append(index)
+
+        def on_search(*args):
+            filter_text = search_var.get()
+            populate_listbox(filter_text)
+
+        search_var.trace_add("write", on_search)
+
+        result_text = tk.Text(self.frame1, width=80, height=10, state='disabled')
+        result_text.pack(pady=10)
+
+        def on_select(event=None):
+            selection = listbox.curselection()
+            result_text.config(state='normal')
+            result_text.delete("1.0", tk.END)
+            if not selection:
+                result_text.insert(tk.END, "No student selected.")
+            else:
+                lb_index = selection[0]
+                df_index = self._student_indices[lb_index]
+                info = self.grading_Sheet.iloc[df_index].to_dict()
+                for k, v in info.items():
+                    result_text.insert(tk.END, f"{k}: {v}\n")
+            result_text.config(state='disabled')
+
+        listbox.bind('<<ListboxSelect>>', on_select)
+
+        populate_listbox()
+        if listbox.size() > 0:
+            listbox.selection_set(0)
+            on_select()
+
+        tk.Button(self.frame1, text="Back to Home", command=self.show_home).pack(pady=10)
