@@ -179,8 +179,8 @@ class FeedbackMixin:
                 df = pd.read_csv(file_path)
             else:
                 df = pd.read_excel(file_path)
-            if not {'Marks', 'Feedback'}.issubset(df.columns):
-                self.show_message("The file must contain 'Marks' and 'Feedback' columns.")
+            if not {'Grade', 'Feedback comment'}.issubset(df.columns):
+                self.show_message("The file must contain 'Grade' and 'Feedback comment' columns.")
                 return
 
            

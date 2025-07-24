@@ -62,6 +62,7 @@ class J4SInternModuleHelper(SplitMixin, MergeMixin, FeedbackMixin):
         tk.Button(self.frame2, text="Upload Generic Feedback Sheet", width=40, height=2, command=self.upload_feedback_page).pack(pady=20)
         tk.Button(self.frame2, text="Update Grading Sheet using Submitted Sheet", width=40, height=2, wraplength=600, command=self.update_grading_sheet_using_submitted).pack(pady=20)
         tk.Button(self.frame2, text="Search User by ID", width=40, height=2, wraplength=400, command=self.search_student_page_select_sheet).pack(pady=20)
+        tk.Label(self.frame2, text="Created and Maintained by Liam Ford. Contact at liam.ford001@gmail.com", wraplength=600).pack(pady=200)
 
     def show_home(self):
         self.clear_frame1()
@@ -84,15 +85,16 @@ class J4SInternModuleHelper(SplitMixin, MergeMixin, FeedbackMixin):
             "This tool is designed to help with:\n"
             "\n"
             "1. Grading sheets:\n"
-            "   - Split student grading sheets into multiple markers\n"
+            "   - Utilises moodles list of all students on a course to then create a bran new grading sheet for each marker.\n"
             "   - Merge multiple markers grading sheets into one\n"
             "\n"
             "2. Generic Feedback\n"
-            "   - Generate generic feedback for students based on their grades\n"
-            "   - Allow user to select feedback from a predefined list\n"
+            "   - Generate generic feedback for students based on their grades by utilising a pre defined list built into the program or that is uploaded\n"
+            "   - Allow user to select feedback from the generic feedback list\n"
             "   - Allow user to write individual feedback for students\n"
             "\n"
-            "3. Generate new graded sheet that complies with Moodle's requirements\n"
+            "3. Update Grading Sheet\n"
+            "   - Update existing grading sheets with new information from the sheet of submitted students from moodle\n"
             "\n"
             "To get started, please press one of the buttons to the right.\n"
         )
@@ -178,17 +180,17 @@ class J4SInternModuleHelper(SplitMixin, MergeMixin, FeedbackMixin):
         tk.Button(self.frame1, text="Back to Home", command=self.show_home).pack(pady=10)
 
     def search_student_page(self):
-        """Search for a student by Username or ID (after grading sheet is loaded)."""
+        """Search for a student by ID/email."""
         if self.grading_Sheet is None:
             self.show_message("No grading sheet loaded.")
             return
         self.clear_frame1()
-        tk.Label(self.frame1, text="Search for a student by Username or ID", font=("Arial", 14, "bold")).pack(pady=10)
+        tk.Label(self.frame1, text="Search for a student by ID/email", font=("Arial", 14, "bold")).pack(pady=10)
 
         search_var = tk.StringVar()
         search_entry = tk.Entry(self.frame1, textvariable=search_var, width=40)
         search_entry.pack(pady=5)
-        tk.Label(self.frame1, text="Search by Username or ID").pack()
+        tk.Label(self.frame1, text="Search by ID/email").pack()
 
         listbox = tk.Listbox(self.frame1, width=80, height=20, exportselection=False)
         listbox.pack(pady=10, padx=10, fill='x')
