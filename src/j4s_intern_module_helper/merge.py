@@ -17,12 +17,16 @@ class MergeMixin:
         skipped_students = []
         try:
             for file_path in file_paths:
-                if file_path.endswith('.csv'):
-                    dataframes.append(pd.read_csv(file_path, usecols=columns, encoding="utf-8"))
-                elif file_path.endswith('.xlsx'):
-                    sheets = pd.read_excel(file_path, sheet_name=None, usecols=columns)
-                    for sheet in sheets.values():
-                        dataframes.append(sheet)
+                try:
+                    if file_path.endswith('.csv'):
+                        dataframes.append(pd.read_csv(file_path, usecols=columns, encoding="utf-8"))
+                    elif file_path.endswith('.xlsx'):
+                        sheets = pd.read_excel(file_path, sheet_name=None, usecols=columns)
+                        for sheet in sheets.values():
+                            dataframes.append(sheet)
+                except ValueError as ve:
+                    self.show_message(f"File '{file_path}' is missing required columns: {ve}")
+                    return
             if dataframes:
                 combined_df = pd.concat(dataframes, ignore_index=True)
                 valid_rows = []

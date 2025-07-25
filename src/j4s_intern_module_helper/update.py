@@ -33,8 +33,8 @@ class UpdateMixin:
             return
 
        
-        submitted_valid = self.submitted.dropna(subset=['Submission id', 'Sub ID'])
-        submitted_map = submitted_valid.set_index('Username')[['Submission id', 'Sub ID']].to_dict('index')
+        submitted_with_ids = self.submitted.dropna(subset=['Submission id', 'Sub ID'])
+        submitted_map = submitted_with_ids.set_index('Username')[['Submission id', 'Sub ID']].to_dict('index')
 
         for index, row in self.grading_Sheet.iterrows():
             username = row.get('Username')
