@@ -101,73 +101,156 @@ class J4SInternModuleHelper(SplitMixin, MergeMixin, FeedbackMixin):
     
     def update_grading_sheet_using_submitted(self):
         self.clear_frame1()
-        tk.Label(self.frame1, text="Update Grading Sheet using Submitted Sheet", font=("Arial", 16, "bold")).pack(pady=10)
+        tk.Label(
+            self.frame1,
+            text="Update Grading Sheet using Submitted Sheet",
+            font=("Arial", 16, "bold")
+        ).pack(pady=10)
+
+        # Brief overview instructions
+        overview = (
+            "This feature allows you to update your grading sheet with the latest submission details from Moodle.\n\n"
+            "Simply select the 'submitted' sheet (downloaded from Moodle, containing all students who have submitted) "
+            "and your current grading sheet. The tool will automatically update the Sub ID, Submission id, and Submission time "
+            "columns in your grading sheet for all matching students, ensuring your records are up to date."
+        )
+        tk.Label(self.frame1, text=overview, font=("Arial", 11), wraplength=900, justify="left", anchor="w").pack(pady=(0, 10), padx=10)
+
+        # Frame for file selection
+        file_frame = tk.Frame(self.frame1)
+        file_frame.pack(pady=10)
 
         submitted_path_var = tk.StringVar()
         graded_path_var = tk.StringVar()
 
-        def select_submitted():
-            path = filedialog.askopenfilename(filetypes=[("CSV files", "*.csv"), ("Excel files", "*.xlsx")])
-            submitted_path_var.set(path)
+        # Graded Sheet
+        tk.Label(file_frame, text="Graded Sheet:", font=("Arial", 12)).grid(row=0, column=0, sticky="e", padx=5, pady=5)
+        tk.Entry(file_frame, textvariable=graded_path_var, width=60, state='readonly').grid(row=0, column=1, padx=5, pady=5)
+        tk.Button(file_frame, text="Browse...", command=lambda: graded_path_var.set(
+            filedialog.askopenfilename(filetypes=[("CSV files", "*.csv"), ("Excel files", "*.xlsx")])
+        )).grid(row=0, column=2, padx=5, pady=5)
 
-        def select_graded():
-            path = filedialog.askopenfilename(filetypes=[("CSV files", "*.csv"), ("Excel files", "*.xlsx")])
-            graded_path_var.set(path)
+        # Submitted Sheet
+        tk.Label(file_frame, text="Submitted Sheet:", font=("Arial", 12)).grid(row=1, column=0, sticky="e", padx=5, pady=5)
+        tk.Entry(file_frame, textvariable=submitted_path_var, width=60, state='readonly').grid(row=1, column=1, padx=5, pady=5)
+        tk.Button(file_frame, text="Browse...", command=lambda: submitted_path_var.set(
+            filedialog.askopenfilename(filetypes=[("CSV files", "*.csv"), ("Excel files", "*.xlsx")])
+        )).grid(row=1, column=2, padx=5, pady=5)
 
-        tk.Button(self.frame1, text="Select Submitted Sheet", command=select_submitted).pack(pady=5)
-        tk.Label(self.frame1, textvariable=submitted_path_var, wraplength=900).pack(pady=2)
-        tk.Button(self.frame1, text="Select Graded Sheet", command=select_graded).pack(pady=5)
-        tk.Label(self.frame1, textvariable=graded_path_var, wraplength=900).pack(pady=2)
+        # Status label
+        status_var = tk.StringVar()
+        status_label = tk.Label(self.frame1, textvariable=status_var, fg="red", font=("Arial", 11))
+        status_label.pack(pady=5)
 
         def run_update():
             submitted_path = submitted_path_var.get()
             graded_path = graded_path_var.get()
             if not submitted_path or not graded_path:
-                self.show_message("Please select both files.")
+                status_var.set("Please select both files.")
                 return
 
-           
-            if submitted_path.endswith('.csv'):
-                submitted_df = pd.read_csv(submitted_path, encoding="utf-8")
-            else:
-                submitted_df = pd.read_excel(submitted_path)
-            
-            if graded_path.endswith('.csv'):
-                graded_df = pd.read_csv(graded_path, encoding="utf-8")
-            else:
-                graded_df = pd.read_excel(graded_path)
+            try:
+                if submitted_path.endswith('.csv'):
+                    submitted_df = pd.read_csv(submitted_path, encoding="utf-8")
+                else:
+                    submitted_df = pd.read_excel(submitted_path)
 
-            
+                if graded_path.endswith('.csv'):
+                    graded_df = pd.read_csv(graded_path, encoding="utf-8")
+                else:
+                    graded_df = pd.read_excel(graded_path)
+            except Exception as e:
+                status_var.set(f"Error loading files: {e}")
+                return
+
+            if 'Username' not in submitted_df.columns or 'Username' not in graded_df.columns:
+                status_var.set("Both files must contain a 'Username' column.")
+                return
+
             submitted_df.set_index('Username', inplace=True)
 
+            updated_count = 0
             for idx, row in graded_df.iterrows():
                 username = row.get('Username')
                 if pd.notna(username) and username in submitted_df.index:
                     for col in ['Sub ID', 'Submission id', 'Submission time']:
                         if col in submitted_df.columns and col in graded_df.columns:
                             graded_df.at[idx, col] = submitted_df.at[username, col]
+                            updated_count += 1
 
             self.updated_grading_df = graded_df
 
-            tk.Label(self.frame1, text="Update complete! Click below to save the updated graded sheet.").pack(pady=10)
-            tk.Button(self.frame1, text="Save Updated Graded Sheet", command=save_updated).pack(pady=10)
+            # Check for students with missing Sub ID or Submission id after update
+            missing_mask = (
+                graded_df['Sub ID'].isna() | (graded_df['Sub ID'].astype(str).str.strip() == "") |
+                graded_df['Submission id'].isna() | (graded_df['Submission id'].astype(str).str.strip() == "")
+            )
+            missing_students_df = graded_df[missing_mask].copy()
+            complete_students_df = graded_df[~missing_mask].copy()
 
-        def save_updated():
-            file_path = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV files", "*.csv"), ("Excel files", "*.xlsx")])
-            if file_path:
-                if file_path.endswith('.csv'):
-                    self.updated_grading_df.to_csv(file_path, index=False, encoding="utf-8")
-                else:
-                    self.updated_grading_df.to_excel(file_path, index=False)
-                self.show_message("Updated graded sheet saved.")
+            # Show results in a viewer similar to split.py
+            self.clear_frame1()
+            tk.Label(self.frame1, text="Updated Grading Sheet Preview", font=("Arial", 16, "bold")).pack(pady=10)
+            import tkinter.ttk as ttk
+            notebook = ttk.Notebook(self.frame1)
+            notebook.pack(expand=True, fill='both', padx=10, pady=10)
 
-        tk.Button(self.frame1, text="Update Graded Sheet", command=run_update).pack(pady=20)
-        tk.Button(self.frame1, text="Back to Home", command=self.show_home).pack(pady=10)
-        
+            # Tab for updated grading sheet (only complete students)
+            frame_updated = tk.Frame(notebook)
+            label_updated = tk.Label(frame_updated, text=f"Updated Grading Sheet ({len(complete_students_df)} students)")
+            label_updated.pack()
+            text_updated = tk.Text(frame_updated, wrap="none", height=15)
+            text_updated.insert(tk.END, complete_students_df.to_string(index=False))
+            text_updated.config(state='disabled')
+            text_updated.pack(expand=True, fill='both')
+            notebook.add(frame_updated, text="Updated Sheet")
+
+            # Tab for missing students
+            if not missing_students_df.empty:
+                frame_missing = tk.Frame(notebook)
+                label_missing = tk.Label(frame_missing, text=f"Missing Sub ID/Submission id ({len(missing_students_df)})")
+                label_missing.pack()
+                text_missing = tk.Text(frame_missing, wrap="none", height=8)
+                text_missing.insert(tk.END, missing_students_df.to_string(index=False))
+                text_missing.config(state='disabled')
+                text_missing.pack(expand=True, fill='both')
+                notebook.add(frame_missing, text="Students with empty submission id/Sub ID")
+
+            def save_updated():
+                file_path = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV files", "*.csv"), ("Excel files", "*.xlsx")])
+                if file_path:
+                    if file_path.endswith('.csv'):
+                        complete_students_df.to_csv(file_path, index=False, encoding="utf-8")
+                    else:
+                        complete_students_df.to_excel(file_path, index=False)
+                    self.show_message("Updated graded sheet saved.")
+
+            def save_missing():
+                file_path = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV files", "*.csv"), ("Excel files", "*.xlsx")])
+                if file_path:
+                    if file_path.endswith('.csv'):
+                        missing_students_df.to_csv(file_path, index=False, encoding="utf-8")
+                    else:
+                        missing_students_df.to_excel(file_path, index=False)
+                    self.show_message("Missing students file saved.")
+
+            btn_frame = tk.Frame(self.frame1)
+            btn_frame.pack(pady=20)
+            tk.Button(btn_frame, text="Save Updated Graded Sheet", command=save_updated, width=25, height=2).pack(side='left', padx=10)
+            if not missing_students_df.empty:
+                tk.Button(btn_frame, text="Save Missing Students List", command=save_missing, width=25, height=2).pack(side='left', padx=10)
+            tk.Button(btn_frame, text="Back to Home", command=self.show_home, width=15, height=2).pack(side='left', padx=10)
+
+        # Action buttons
+        btn_frame = tk.Frame(self.frame1)
+        btn_frame.pack(pady=20)
+        tk.Button(btn_frame, text="Update Graded Sheet", command=run_update, width=25, height=2).pack(side='left', padx=10)
+        tk.Button(btn_frame, text="Back to Home", command=self.show_home, width=15, height=2).pack(side='left', padx=10)
+
     def search_student_page_select_sheet(self):
         """Page to select grading sheet before searching for a student."""
         self.clear_frame1()
-        tk.Label(self.frame1, text="Select a grading sheet to search for students:", font=("Arial", 16, "bold")).pack(pady=10)
+        tk.Label(self.frame1, text="Select a grading sheet to search for students: \n This functionality takes a grading sheet and allows you to search for students within it by their id. Searching for students this way will show all information about them", font=("Arial", 16, "bold"), wraplength=600).pack(pady=10)
         def select_sheet():
             file_path = filedialog.askopenfilename(filetypes=[("CSV files", "*.csv"), ("Excel files", "*.xlsx")])
             if file_path:

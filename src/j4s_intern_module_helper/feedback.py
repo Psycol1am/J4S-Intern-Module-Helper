@@ -31,8 +31,9 @@ class FeedbackMixin:
     def feedback_page_part2(self):
         self.clear_frame1()
         tk.Label(self.frame1, text="Step 2: Select feedback type").pack(pady=10)
-        tk.Button(self.frame1, text="Generate Generic Feedback", command=self.generate_generic_feedback).pack(pady=10)
-        tk.Button(self.frame1, text="Write Individual Feedback", command=self.individual_feedback_page).pack(pady=10)
+        tk.Label(self.frame1, text="This is a feedback generation tool. Select individual feedback if you are wanting to provide personalized comments for a specific student. Otherwise, select generic feedback if you would like to provide general comments for all students based on an uploaded list of generic feedbacks.").pack(pady=10)
+        tk.Button(self.frame1, text="Generate Generic Feedback: Automatically selects generic feedback based on the marks that students have", command=self.generate_generic_feedback).pack(pady=10)
+        tk.Button(self.frame1, text="Write Individual Feedback: Allows you to write custom feedback by clicking on and searching for students", command=self.individual_feedback_page).pack(pady=10)
 
     def generate_generic_feedback(self):
         if self.grading_Sheet is None:
@@ -49,7 +50,8 @@ class FeedbackMixin:
             popup = tk.Toplevel(self.root)
             popup.title("Feedback Generated")
             popup.geometry("300x200")
-            tk.Label(popup, text="Generic feedback has been generated for all students.").pack(pady=10)
+            label = tk.Label(popup, text="Generic feedback has been generated for all students.", wraplength=280, font=("Arial", 12))
+            label.pack(pady=10, padx=10)
             tk.Button(popup, text="Save Feedback", command=self.save_gradingsheetfile).pack(pady=10)
         except Exception as e:
             self.show_message(f"Error generating feedback: {e}")

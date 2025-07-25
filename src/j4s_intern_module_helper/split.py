@@ -37,13 +37,18 @@ class SplitMixin:
 
     def show_split_entry_page(self):
         self.clear_frame1()
-        tk.Label(self.frame1, text="Please type the marker and then the amount of students you want them to have. You can add more markers by clk").pack(pady=10)
+        tk.Label(self.frame1, text="Please type the marker and then the amount of students you want them to have. You can add more markers by clicking 'Add Marker'.", wraplength=900).pack(pady=10)
         marker_frame = tk.Frame(self.frame1)
         marker_frame.pack(pady=10)
         marker_entries = []
         students_left = tk.StringVar()
         students_left_label = tk.Label(self.frame1, textvariable=students_left, font=("Arial", 12, "bold"))
         students_left_label.pack(pady=5)
+        
+        header_frame = tk.Frame(marker_frame)
+        header_frame.pack(pady=(0, 2), fill='x')
+        tk.Label(header_frame, text="Marker", font=("Arial", 12, "bold"), width=10, anchor="w").grid(row=0, column=0, padx=(25, 25), sticky="w")
+        tk.Label(header_frame, text="Amount", font=("Arial", 12, "bold"), width=8, anchor="w").grid(row=0, column=1, padx=(0, 0), sticky="w")
 
         def update_students_left():
             total = 0
@@ -104,9 +109,10 @@ class SplitMixin:
         if 'First name' not in self.all_Students.columns or 'Last name' not in self.all_Students.columns or 'Username' not in self.all_Students.columns:
             self.show_message("The grading sheet must contain 'Username','First name' and 'Last name' columns.")
             return
-        if pd.isna(self.all_Students[['First name', 'Last name', 'Username']]).any().any():
-            self.show_message("The grading sheet contains missing values in 'First name', 'Last name', or 'Username' columns.")
-            return
+        for col in ['First name', 'Username']:
+            if self.all_Students[col].isnull().any() or (self.all_Students[col].astype(str).str.strip() == '').any():
+                self.show_message(f"The grading sheet contains missing or blank values in '{col}' column.")
+                return
         
         for col in ['First name', 'Last name', 'Username']:
             self.all_Students[col] = self.all_Students[col].replace('-', '')
@@ -147,6 +153,10 @@ class SplitMixin:
 
     def save_split_files(self, splits):
         try:
+            messagebox.showinfo(
+                "Select Save Location",
+                "Please select a folder where you would like to save the split grading sheets."
+            )
             folder = filedialog.askdirectory(title="Select Folder to Save Split Files")
             if not folder:
                 return
@@ -156,4 +166,4 @@ class SplitMixin:
                 chunk.to_csv(file_path, index=False)
             self.show_message("All split files have been saved.")
         except Exception as e:
-            self.show_message(f"Error saving files: {e}")
+            self.show_message(f"Error saving split files: {e}")
