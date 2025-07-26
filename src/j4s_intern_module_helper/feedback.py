@@ -13,6 +13,7 @@ class FeedbackMixin:
         tk.Label(self.frame1, text="Generate Feedback", font=("Arial", 16, "bold")).pack(pady=10)
         tk.Label(self.frame1, text="Please select a grading sheet to add feedback to:\nThis program supports both generating automated generic feedback based on the students score and also allows the user to write individual feedback for each student.", wraplength=900).pack(pady=20)
         tk.Button(self.frame1, text="Select Grading Sheet", command=self.select_feedback_file).pack(pady=10)
+        tk.Button(self.frame1, text="Back to Home", command=self.show_home).pack(pady=10)
 
     def select_feedback_file(self):
         file_path = filedialog.askopenfilename(filetypes=[("CSV or Excel", "*.csv;*.xlsx")])

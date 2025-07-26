@@ -121,12 +121,12 @@ class J4SInternModuleHelper(SplitMixin, MergeMixin, FeedbackMixin):
         file_frame.pack(pady=10)
 
         submitted_path_var = tk.StringVar()
-        graded_path_var = tk.StringVar()
+        grading_path_var = tk.StringVar()
 
-        # Graded Sheet
-        tk.Label(file_frame, text="Graded Sheet:", font=("Arial", 12)).grid(row=0, column=0, sticky="e", padx=5, pady=5)
-        tk.Entry(file_frame, textvariable=graded_path_var, width=60, state='readonly').grid(row=0, column=1, padx=5, pady=5)
-        tk.Button(file_frame, text="Browse...", command=lambda: graded_path_var.set(
+        # Grading Sheet
+        tk.Label(file_frame, text="Grading Sheet:", font=("Arial", 12)).grid(row=0, column=0, sticky="e", padx=5, pady=5)
+        tk.Entry(file_frame, textvariable=grading_path_var, width=60, state='readonly').grid(row=0, column=1, padx=5, pady=5)
+        tk.Button(file_frame, text="Browse...", command=lambda: grading_path_var.set(
             filedialog.askopenfilename(filetypes=[("CSV files", "*.csv"), ("Excel files", "*.xlsx")])
         )).grid(row=0, column=2, padx=5, pady=5)
 
