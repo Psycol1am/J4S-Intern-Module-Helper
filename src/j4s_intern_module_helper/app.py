@@ -144,7 +144,7 @@ class J4SInternModuleHelper(SplitMixin, MergeMixin, FeedbackMixin):
 
         def run_update():
             submitted_path = submitted_path_var.get()
-            graded_path = graded_path_var.get()
+            graded_path = grading_path_var.get()
             if not submitted_path or not graded_path:
                 status_var.set("Please select both files.")
                 return
