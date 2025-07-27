@@ -5,6 +5,7 @@ import pandas as pd
 import shutil
 import tkinter.ttk as ttk
 from .utils import resource_path
+import unicodedata
 
 
 class FeedbackMixin:
@@ -91,7 +92,8 @@ class FeedbackMixin:
                     name = str(row.get('Surname/Name', 'Unknown'))[:24]
                     username = str(row.get('Username', 'Unknown'))[:14]
                     grade = str(row.get('Grade', 'N/A'))[:5]
-                    feedback = str(row.get('Feedback comment', 'No feedback'))  # Don't truncate feedback
+                    feedback = str(row.get('Feedback comment', 'No feedback'))
+                    feedback = unicodedata.normalize("NFKC", feedback)
                     
                     display_text += f"{name:<25} {username:<15} {grade:<6} {feedback}\n"
                 
