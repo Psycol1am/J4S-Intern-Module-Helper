@@ -194,15 +194,15 @@ class J4SInternModuleHelper(SplitMixin, MergeMixin, FeedbackMixin):
             notebook = ttk.Notebook(self.frame1)
             notebook.pack(expand=True, fill='both', padx=10, pady=10)
 
-            # Tab for updated grading sheet (only complete students)
+            # Tab for updated grading sheet (all students, including skipped)
             frame_updated = tk.Frame(notebook)
-            label_updated = tk.Label(frame_updated, text=f"Updated Grading Sheet ({len(complete_students_df)} students)")
+            label_updated = tk.Label(frame_updated, text=f"Updated Grading Sheet (All students: {len(graded_df)})")
             label_updated.pack()
             text_updated = tk.Text(frame_updated, wrap="none", height=15)
-            text_updated.insert(tk.END, complete_students_df.to_string(index=False))
+            text_updated.insert(tk.END, graded_df.to_string(index=False))
             text_updated.config(state='disabled')
             text_updated.pack(expand=True, fill='both')
-            notebook.add(frame_updated, text="Updated Sheet")
+            notebook.add(frame_updated, text="Updated Sheet (All)")
 
             # Tab for missing students
             if not missing_students_df.empty:
@@ -219,9 +219,9 @@ class J4SInternModuleHelper(SplitMixin, MergeMixin, FeedbackMixin):
                 file_path = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV files", "*.csv"), ("Excel files", "*.xlsx")])
                 if file_path:
                     if file_path.endswith('.csv'):
-                        complete_students_df.to_csv(file_path, index=False, encoding="utf-8")
+                        graded_df.to_csv(file_path, index=False, encoding="utf-8")
                     else:
-                        complete_students_df.to_excel(file_path, index=False)
+                        graded_df.to_excel(file_path, index=False)
                     self.show_message("Updated graded sheet saved.")
 
             def save_missing():

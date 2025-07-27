@@ -157,19 +157,16 @@ class FeedbackMixin:
             self.show_message("No grading sheet loaded.")
             return
         self.clear_frame1()
-        tk.Label(self.frame1, text="Select a student to edit feedback:", font=("Arial", 14, "bold")).pack(pady=10)
+        tk.Label(self.frame1, text="Select a student to edit feedback (only students with a grade):", font=("Arial", 14, "bold")).pack(pady=10)
 
-        
         search_var = tk.StringVar()
         search_entry = tk.Entry(self.frame1, textvariable=search_var, width=40)
         search_entry.pack(pady=5)
         tk.Label(self.frame1, text="Search by ID").pack()
 
-        
         listbox = tk.Listbox(self.frame1, width=80, height=20, exportselection=False)
         listbox.pack(pady=10, padx=10, fill='x')
 
-       
         self._student_display = []
         self._student_indices = []
 
@@ -178,6 +175,10 @@ class FeedbackMixin:
             self._student_display.clear()
             self._student_indices.clear()
             for index, row in self.grading_Sheet.iterrows():
+                
+                grade = row.get('Grade', '')
+                if pd.isna(grade) or str(grade).strip() == "":
+                    continue
                 feedback_val = row.get('Feedback comment', '')
                 if pd.isna(feedback_val) or not str(feedback_val).strip():
                     feedback_val = "Blank"
@@ -244,7 +245,6 @@ class FeedbackMixin:
         populate_listbox()
         if listbox.size() > 0:
             listbox.selection_set(0)
-            on_select()
         
     def upload_feedback_page(self):
         self.clear_frame1()
