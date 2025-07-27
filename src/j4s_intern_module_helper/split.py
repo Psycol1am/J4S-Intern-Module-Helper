@@ -109,7 +109,7 @@ class SplitMixin:
         if 'First name' not in self.all_Students.columns or 'Last name' not in self.all_Students.columns or 'Username' not in self.all_Students.columns:
             self.show_message("The grading sheet must contain 'Username','First name' and 'Last name' columns.")
             return
-        for col in ['First name', 'Last name', 'Username']:
+        for col in ['First name','Username']:
             if self.all_Students[col].isnull().any() or (self.all_Students[col].astype(str).str.strip() == '').any():
                 self.show_message(f"The grading sheet contains missing or blank values in '{col}' column.")
                 return

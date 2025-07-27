@@ -259,29 +259,23 @@ class FeedbackMixin:
         if not file_path:
             return
 
-        
-        dest_path = resource_path("data\\generic-feedbacks.xlsx")
+        dest_path = resource_path("data\\generic-feedbacks.csv")
 
         try:
-            
             if file_path.endswith('.csv'):
-                df = pd.read_csv(file_path)
+                try:
+                    df = pd.read_csv(file_path, encoding="utf-8")
+                except UnicodeDecodeError:
+                    df = pd.read_csv(file_path, encoding="latin1")
             else:
                 df = pd.read_excel(file_path)
-            if not {'Marks', 'Feedback comment'}.issubset(df.columns):
-                self.show_message("The file must contain 'Marks' and 'Feedback comment' columns.")
+            if not {'Marks', 'Feedback'}.issubset(df.columns):
+                self.show_message("The file must contain 'Marks' and 'Feedback' columns.")
                 return
 
-           
-            if file_path.endswith('.csv'):
-                
-                df.to_excel(dest_path, index=False)
-            else:
-                shutil.copy(file_path, dest_path)
+            df.to_csv(dest_path, index=False, encoding="utf-8")
 
             self.show_message("Feedback sheet uploaded successfully. Reloading feedbacks...")
             self.load_Feedback()
         except Exception as e:
             self.show_message(f"Error uploading feedback sheet: {e}")
-            
-            

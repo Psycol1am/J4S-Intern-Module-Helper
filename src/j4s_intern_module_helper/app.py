@@ -39,14 +39,13 @@ class J4SInternModuleHelper(SplitMixin, MergeMixin, FeedbackMixin):
 
     def load_Feedback(self):
         self.feedbacks = {}
-        filepath = resource_path("data\\generic-feedbacks.xlsx")
+        filepath = resource_path("data\\generic-feedbacks.csv")
         try:
-            feedback = pd.read_excel(filepath, sheet_name=None)
-            for _, sheet_df in feedback.items():
-                for _, row in sheet_df.iterrows():
-                    ranges = str(row['Marks']).split('-')
-                    for i in range(int(ranges[0]), int(ranges[1])+1):
-                        self.feedbacks[i] = row['Feedback']    
+            feedback = pd.read_csv(filepath, encoding="latin1")
+            for _, row in feedback.iterrows():
+                ranges = str(row['Marks']).split('-')
+                for i in range(int(ranges[0]), int(ranges[1])+1):
+                    self.feedbacks[i] = row['Feedback']    
         except Exception as e:
             print(f"Error loading feedbacks: {e}")
         if self.feedbacks == {}:
